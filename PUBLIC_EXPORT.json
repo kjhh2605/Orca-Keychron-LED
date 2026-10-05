@@ -1,0 +1,329 @@
+{
+  "schema": "orca-led-public-source-v1",
+  "kind": "source-only",
+  "files": {
+    ".gitignore": {
+      "sha256": "15365c6c9ea3f29372cc1984b3ff6de4125528528eb72985292adc6e9d5a4767",
+      "bytes": 747
+    },
+    "LICENSE": {
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+      "bytes": 18092
+    },
+    "README.md": {
+      "sha256": "c160544e14563ff9545606ff19e2ba37f947c4c3a08710024630b118c3617674",
+      "bytes": 11516
+    },
+    "THIRD_PARTY_NOTICES.md": {
+      "sha256": "4f4a7aba24612511895a63b8944fe60ae3a4acb2fdf52ecf262ad63235bb08c9",
+      "bytes": 3225
+    },
+    "docs/protocol.md": {
+      "sha256": "9f50e84afe693c99dd836ecbe30e72933d9a686e0a4651af0efde610b3670b72",
+      "bytes": 8389
+    },
+    "docs/public/INSTALL.md": {
+      "sha256": "8c983be68df87ff85f3f7401a8392a95026f13068fd275e2a74539b2be376c01",
+      "bytes": 18066
+    },
+    "docs/public/PUBLISHING.md": {
+      "sha256": "c532b1c334a45815ab397fd56cb6040ff06f6c4b54b88c966d68e0940f081d49",
+      "bytes": 3603
+    },
+    "docs/public/STATUS.md": {
+      "sha256": "6730faf6f14efdb9b1ffbcbacb6ff44c09eec26639d10def6356bcb5cc282ce7",
+      "bytes": 5673
+    },
+    "docs/public/USAGE.md": {
+      "sha256": "91a452c0269d88abbf253722fffd231b40b36e0c821bebc5568b2382f3e85a8e",
+      "bytes": 15141
+    },
+    "docs/public/connection-modes.svg": {
+      "sha256": "11489f6cb1383a2cdc19f3ae8b821ac53436f22734aab5244d863bf54279dca0",
+      "bytes": 9874
+    },
+    "docs/public/firmware-flow.svg": {
+      "sha256": "de3b9666cc4bf1dcb56b6b9c9f05893a2d71c64b5c8a99e457d1ef8874aa054e",
+      "bytes": 7217
+    },
+    "docs/public/settings-preview.png": {
+      "sha256": "52c8d8a12a8c62d5e342cb29d082bfbf54f2387882696ef105666b5c48b719cb",
+      "bytes": 313537
+    },
+    "examples/README.md": {
+      "sha256": "ac00aa53d8858fcf0c6601ab86d278f7264c7f1c4d95523a983c172722fbde7b",
+      "bytes": 855
+    },
+    "examples/theme.json": {
+      "sha256": "b838cb07aac07282c7d5d1138dcd788dad56fb635af97bcbc79a0f9f2140e555",
+      "bytes": 1038
+    },
+    "firmware/LICENSE": {
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+      "bytes": 18092
+    },
+    "firmware/flash.py": {
+      "sha256": "0ba515486ae30566201b3efec3ab7a28f026ce554ac1b610125a6e1ae1a63d8b",
+      "bytes": 23975
+    },
+    "firmware/patch_qmk.py": {
+      "sha256": "824bac3a3aa64d700674df949f434297b7fb735417f198c21969197172471cf7",
+      "bytes": 5343
+    },
+    "firmware/prepare.py": {
+      "sha256": "5ab2e0234bcf86d2b2cd3558faf9fe4bb67f5c283e0fb70f57191ab9beea3730",
+      "bytes": 2216
+    },
+    "firmware/record_build.py": {
+      "sha256": "47dca26950668467f88a3043a773890f31b2b0faeb9982aace984aab7350e49b",
+      "bytes": 1827
+    },
+    "firmware/recovery/custom-via-definition-manifest.json": {
+      "sha256": "0ac8aef7d5beaa01fad2cf7a7e73354be0ee97235263fa9bb0eec157126d2edd",
+      "bytes": 904
+    },
+    "firmware/recovery/k10_pro_ansi_rgb_orca_led_618127a_via.json": {
+      "sha256": "08da350a5114da22041bc8dd7aad2a361b86dfba1c337afcad4e1bb074ff2caf",
+      "bytes": 6881
+    },
+    "firmware/recovery/k10_pro_us_rgb_v1.0.json": {
+      "sha256": "a4da9984116af5ec18a3343723c65763aa592d766f7171a66cee9abdbf4b416f",
+      "bytes": 4936
+    },
+    "firmware/recovery/official-manifest.json": {
+      "sha256": "1a4ce555085abb78967c0221f3dbdc9b6096d802e588fbe07e582cf4d8df6805",
+      "bytes": 502
+    },
+    "firmware/requirements-build.txt": {
+      "sha256": "709681c9589529f8e6e267a6bed4eab250610d71166d4c28f1e9d851093a40d8",
+      "bytes": 439
+    },
+    "firmware/src/orca_input.c": {
+      "sha256": "91a1342e6f063356b8b13ae8fd948fc6f7e6310ee96f4e7cb572603c64be51f3",
+      "bytes": 1154
+    },
+    "firmware/src/orca_input.h": {
+      "sha256": "bc80a7fd7c5fd4dbf7e8c72f4758d5fe41c03ea2f95ff209f135dd4dcb07cb38",
+      "bytes": 652
+    },
+    "firmware/src/orca_led.c": {
+      "sha256": "e6fdfceb1067ff38bd53f263c63e44bcce17608ab7f4613366ea7ecbe4e06c81",
+      "bytes": 7907
+    },
+    "firmware/src/orca_led.h": {
+      "sha256": "fda1e6948faa4fb6a925e59b486daaad05f57c85ed3f6cba931690626b8c6f93",
+      "bytes": 2057
+    },
+    "firmware/src/orca_qmk.c": {
+      "sha256": "519d4973a580c7265e9e388bffb177e5719d28f6c985302e96db5ee222f47939",
+      "bytes": 5187
+    },
+    "firmware/upstream.lock.json": {
+      "sha256": "4a721c6a2391e321d56eae2e7cc490ccd9dc18e9a2a61a726294491d98b66c40",
+      "bytes": 4030
+    },
+    "native/AppIcon.png": {
+      "sha256": "01623041c395e5e2c86643e61e84803c22264738f9d53a2a5fca12570c5117d9",
+      "bytes": 981192
+    },
+    "native/Info.plist": {
+      "sha256": "3076205c1cb2265c82a154d1bf24a9debcfe24b3373f4a69650afc0d07761a77",
+      "bytes": 859
+    },
+    "native/StatusApp.swift": {
+      "sha256": "c459f88a154cda099d0d44d225e4cf0c4681a0e6ef93e372d0f7545b61420933",
+      "bytes": 33315
+    },
+    "native/main.swift": {
+      "sha256": "b8100a661f79e58210cf3198a94286b1be870b5fbbfcc9eb91da1c46f5b28ee4",
+      "bytes": 57611
+    },
+    "native/settings/Info.plist": {
+      "sha256": "b025158661e90c457933fd1b02defd895638e864019cabf2ef3d87fc7bf46e89",
+      "bytes": 776
+    },
+    "native/settings/SettingsApp.swift": {
+      "sha256": "fd6d4c3b45730d356c5cc471bed10f0497d53f6260591746028309c239d8e3b3",
+      "bytes": 5980
+    },
+    "native/settings/SettingsRender.swift": {
+      "sha256": "9ba53a3d265b8d1b542c5d891a97fe1d01a459068dcc6c6d3c1279a461d29704",
+      "bytes": 7870
+    },
+    "native/settings/SettingsSelfTests.swift": {
+      "sha256": "2142a90e0e42254c63f3197d682cc1eb01b348253a3a05f7db8174b4f48dc45e",
+      "bytes": 11492
+    },
+    "native/settings/SettingsView.swift": {
+      "sha256": "b7698cc3f4f032af6d7905c0755dde5d77fb68b4e9f60d56b75fc6dede64db93",
+      "bytes": 13271
+    },
+    "native/settings/StateEditor.swift": {
+      "sha256": "18082973cf7c3a60988d2f3fc7e741b8dcab0f7d25e66666288cfbe6c24f5e83",
+      "bytes": 7121
+    },
+    "native/settings/StrictJSON.swift": {
+      "sha256": "d400a3a195b52366e72db6ee632d40ce4be7e7374fdbc90186068b400b173b25",
+      "bytes": 1812
+    },
+    "native/settings/ThemeFileIO.swift": {
+      "sha256": "915d979f1a0ffbfddbaa5a0c4a1c9475e8dcaa4615131e8d9446ede6165cc894",
+      "bytes": 4077
+    },
+    "native/settings/ThemeModel.swift": {
+      "sha256": "dd97d955b7555e5b42d8cf1b1a249983c1f9599c931943b961192306c65d3b78",
+      "bytes": 7809
+    },
+    "native/settings/ThemeStore.swift": {
+      "sha256": "a89f25de763dc8ca51f3fbc5e9059c8c9dd2baccc03c8f1ce80b3e8c47952dd0",
+      "bytes": 12577
+    },
+    "orca_led/__init__.py": {
+      "sha256": "4301e4fe02c73a343eb65c16dc63e7004c83aeaef43bce581e0e09b1a7b226a3",
+      "bytes": 96
+    },
+    "orca_led/__main__.py": {
+      "sha256": "7e07b91e5ed215193e2edfa37a628233dbbb415d4bb745f885e0225de76128a0",
+      "bytes": 9542
+    },
+    "orca_led/acknowledge.py": {
+      "sha256": "fc5f0785f05913bc58708ff2c4e3b3413414985b5db99fd97191542fc3319ad8",
+      "bytes": 2176
+    },
+    "orca_led/cdp_ui.py": {
+      "sha256": "18e431600c559768bc68ec2d6046669e15584b316816e438ecaf6230d68b7e2a",
+      "bytes": 20557
+    },
+    "orca_led/controller.py": {
+      "sha256": "5bbd4ec1b11feaeefedd19b97740f838d5d1e4ed6f76444b62ffa9ca594f9ba1",
+      "bytes": 25316
+    },
+    "orca_led/lock.py": {
+      "sha256": "d94d05a8d0578cdc5fa7d37d02db79762d0e56a426b2afb3155b18f36fb09520",
+      "bytes": 1286
+    },
+    "orca_led/native.py": {
+      "sha256": "beac4f9b5eb06f7512874dc6e833f3f8a9551b639beb0bcde01d2f0fc7f54971",
+      "bytes": 5769
+    },
+    "orca_led/orca.py": {
+      "sha256": "ca68d3562c0ca6beeb69d4aeb099b1722451349931dead07cacf4af78a08fff6",
+      "bytes": 26737
+    },
+    "orca_led/orca_ui_bridge.js": {
+      "sha256": "9b477fae56e75248d8fa53af0394bcf26314d23e24170ef9790490de386121ca",
+      "bytes": 4141
+    },
+    "orca_led/protocol.py": {
+      "sha256": "d0c92dc29947718bd6f50c4fdf2e2416b20bff6cb557af93729134695a8a7e00",
+      "bytes": 3162
+    },
+    "orca_led/theme.py": {
+      "sha256": "fac7a39e122de69bd68eaecadf9d4af05dcfa724c40d190f2ae61ef3f96d01aa",
+      "bytes": 10378
+    },
+    "scripts/backup-via.py": {
+      "sha256": "b85800be04c2706898cb53cadb32c49f719f8d03266e85cb87aad4c3852ac7d0",
+      "bytes": 7488
+    },
+    "scripts/build-firmware.sh": {
+      "sha256": "afe85b0e43204e74d6579b9bbfea7a8a47cd3a80e678298db2cdf220441ca8b8",
+      "bytes": 1606
+    },
+    "scripts/build-icon.sh": {
+      "sha256": "b5bf217b503540127b23fb30b3ff86d20b335cafb75e335e780fda765c728e8e",
+      "bytes": 766
+    },
+    "scripts/build-native.sh": {
+      "sha256": "647113427fcb1b22126c936c0863a2699cfab1d709b7c28c0959d5e7e5055448",
+      "bytes": 1010
+    },
+    "scripts/build-release.sh": {
+      "sha256": "57ebf367cdc95bd8f79926cbd2fbd66710b506a2da568975d5823ed7525424b0",
+      "bytes": 1720
+    },
+    "scripts/build-settings.sh": {
+      "sha256": "52ff6e7208832e6c6e2d62eb683600200a49a8fccd59fbf6cebd288fd05d447e",
+      "bytes": 957
+    },
+    "scripts/export-public.py": {
+      "sha256": "2a0bb68bc9c332f53133e0b9451695430080195af3ed996e1288704b02403bb6",
+      "bytes": 13603
+    },
+    "scripts/restore-via.py": {
+      "sha256": "ae9ba8d0c3846156e79e8307acb8fddd91b9cb8f589a933a83f888257dd04bb0",
+      "bytes": 13610
+    },
+    "scripts/start-orca-debug.command": {
+      "sha256": "498e5a1987ac28c3fcbd2ae657b616c7cf02d45b783589ba6011b64f1f17c2f0",
+      "bytes": 2716
+    },
+    "tests/firmware/run.sh": {
+      "sha256": "90b2d2f2b26a25ba20c7755490ee26d5904f32225f3a00127f760a6565a2337d",
+      "bytes": 624
+    },
+    "tests/firmware/test_flash.py": {
+      "sha256": "d5220e7905644f107fefd8ad537f898fc5d802b5c55789f238cde3c28ceb3a04",
+      "bytes": 19117
+    },
+    "tests/firmware/test_orca_input.c": {
+      "sha256": "dfd88fe12e150c0bf3937d5f55aa18ac629aad29aebb6ffc0e9caa39432ee40c",
+      "bytes": 1255
+    },
+    "tests/firmware/test_orca_led.c": {
+      "sha256": "344991bd10b6f0deef236dbbd5a2f54d5d4c626157829203f03a423e8fd1d63f",
+      "bytes": 15641
+    },
+    "tests/firmware/test_restore_via.py": {
+      "sha256": "ebe10bf0734a3dc05f08ac86a40be40790ad29af879d7afcab3543315c5b1554",
+      "bytes": 9812
+    },
+    "tests/test_acknowledge.py": {
+      "sha256": "9b8d56974a2024864b24e4427a93f40fc8e3b3b0a0f49543b42abaedb090fb56",
+      "bytes": 2714
+    },
+    "tests/test_cdp_ui.py": {
+      "sha256": "b899faff4267c1870485aa7ff1dbe07bc3922c5ce90f404cd9c8d7da23642c5b",
+      "bytes": 24804
+    },
+    "tests/test_controller.py": {
+      "sha256": "6e881cb6260e6db4da2a9f370ce631526b6f48c3003c459dad8ec8d0c51d07fe",
+      "bytes": 17883
+    },
+    "tests/test_export_public.py": {
+      "sha256": "6ac2011d3e7906081a69a86a7492e573b3e0b61e4b1e5e5f3ebd0a6450c8a4a9",
+      "bytes": 8268
+    },
+    "tests/test_lock.py": {
+      "sha256": "4bc36b6c34e2fc4e5017b21ee870d8a85f3e2348fce2101540497e9ee393e801",
+      "bytes": 1052
+    },
+    "tests/test_orca.py": {
+      "sha256": "37710d43e1cb061b59ccf0377d95c253f379e3d3906e6fa75d9009130d5d6fa4",
+      "bytes": 28762
+    },
+    "tests/test_protocol.py": {
+      "sha256": "19ab72ceb4984203f1e0b3439059303d73c03d6c60c764c6568b65ac6d02ddc8",
+      "bytes": 3211
+    },
+    "tests/test_theme.py": {
+      "sha256": "70a67b2f5cc52ab5496114483aadadebed333b3f405e1ee7ce4b4ca54459d6cf",
+      "bytes": 8517
+    },
+    "tests/test_theme_cli.py": {
+      "sha256": "603f5f7d6574a7271460b786037abd7e16a3aa60daf2e1101c697cbfc6e4c40c",
+      "bytes": 3605
+    },
+    "tests/test_theme_controller.py": {
+      "sha256": "60c5c65ad0f82b49ebca58b849f82fad3786cee3503e6f54b5a4a4c39d1b8ecf",
+      "bytes": 11888
+    }
+  },
+  "excludes": [
+    "device backups",
+    "runtime data",
+    "compiled apps and firmware",
+    "downloaded dependencies",
+    "private installation records"
+  ]
+}

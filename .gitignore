@@ -1,0 +1,44 @@
+# Generated apps, firmware, tools and dependencies
+/build/
+/dist/
+*.app/
+/firmware/build/
+/firmware/vendor/
+/firmware/tools/
+*.bin
+*.elf
+*.map
+*.dSYM/
+*.dylib
+*.zip
+*.tar.gz
+*.tar.xz
+
+# Personal recovery data and runtime state: preserve locally
+/firmware/backups/
+/runtime/
+/firmware/recovery/official-restore-plan.json
+/firmware/recovery/via-keycode-compatibility-audit.json
+/firmware/recovery/via-semantic-migration-plan.json
+/TEST-RESULTS.md
+/REQUIREMENTS.md
+/사용안내.md
+/docs/firmware-install.md
+/docs/firmware.md
+/docs/native-helper.md
+/docs/orca-integration.md
+/docs/orca-ui-bridge.js
+
+# Caches, logs and local configuration
+__pycache__/
+*.py[cod]
+*.log
+*.jsonl
+.DS_Store
+.venv/
+.pytest_cache/
+.idea/
+.vscode/
+.env
+.env.*
+!.env.example

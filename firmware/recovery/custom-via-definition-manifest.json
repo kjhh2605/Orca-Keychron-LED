@@ -1,0 +1,14 @@
+{
+  "source": "k10_pro_us_rgb_v1.0.json",
+  "source_sha256": "a4da9984116af5ec18a3343723c65763aa592d766f7171a66cee9abdbf4b416f",
+  "target": "k10_pro_ansi_rgb_orca_led_618127a_via.json",
+  "target_sha256": "08da350a5114da22041bc8dd7aad2a361b86dfba1c337afcad4e1bb074ff2caf",
+  "target_upstream_commit": "618127a725a1773e85f13455602cf6f72ab4de17",
+  "target_firmware_sha256": "6627ff5992ac8d3bf99689fc97b13562968914d129851328b64c146b3dcfdbf5",
+  "compatible_firmware_sha256": [
+    "6627ff5992ac8d3bf99689fc97b13562968914d129851328b64c146b3dcfdbf5",
+    "ac17f3e789fe709943eb5c66303c30e84b4a721d5223989f63412d0e31e5913d"
+  ],
+  "only_semantic_change": "customKeycodes entries 0..5 reordered to source indices [4,5,0,1,2,3]; every other parsed JSON value unchanged",
+  "purpose": "VIA UI names and assigned custom keycodes must match the pinned custom firmware ABI; official definition remains unchanged"
+}

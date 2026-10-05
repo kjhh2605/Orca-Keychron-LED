@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "revision": "00000000-0000-4000-8000-000000000001",
+  "global_brightness": 72,
+  "states": [
+    {
+      "state": 1,
+      "color": "#2A2A2A",
+      "brightness": 100,
+      "effect": "solid",
+      "period_ms": 2400
+    },
+    {
+      "state": 2,
+      "color": "#0033FF",
+      "brightness": 100,
+      "effect": "breathe",
+      "period_ms": 2400
+    },
+    {
+      "state": 3,
+      "color": "#FF5A00",
+      "brightness": 100,
+      "effect": "double",
+      "period_ms": 2400
+    },
+    {
+      "state": 4,
+      "color": "#0CFF00",
+      "brightness": 100,
+      "effect": "blink",
+      "period_ms": 2400
+    },
+    {
+      "state": 5,
+      "color": "#FF0000",
+      "brightness": 100,
+      "effect": "triple",
+      "period_ms": 2800
+    },
+    {
+      "state": 6,
+      "color": "#9600DC",
+      "brightness": 100,
+      "effect": "blink",
+      "period_ms": 2400
+    },
+    {
+      "state": 7,
+      "color": "#0CFF00",
+      "brightness": 100,
+      "effect": "solid",
+      "period_ms": 2400
+    }
+  ]
+}

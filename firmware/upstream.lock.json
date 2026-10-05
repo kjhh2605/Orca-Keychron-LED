@@ -1,0 +1,66 @@
+{
+  "upstream_commit": "618127a725a1773e85f13455602cf6f72ab4de17",
+  "compiler": "Arm GNU Toolchain 13.2.rel1 Darwin arm64",
+  "resources": [
+    {
+      "archive": "keychron-qmk.tar.gz",
+      "url": "https://codeload.github.com/Keychron/qmk_firmware/tar.gz/618127a725a1773e85f13455602cf6f72ab4de17",
+      "destination": "qmk_firmware-618127a725a1773e85f13455602cf6f72ab4de17",
+      "sha256": "aa13b1094ee58260dcff5638505051ccdf0f4a3591bcbbad7c45241cb09cd02f"
+    },
+    {
+      "archive": "chibios.tar.gz",
+      "url": "https://codeload.github.com/qmk/ChibiOS/tar.gz/0e9d558b525a8f28285f3bb509fd48a897c43151",
+      "destination": "qmk_firmware-618127a725a1773e85f13455602cf6f72ab4de17/lib/chibios",
+      "sha256": "9c9328e1c5b36c393c576608e68eff282c32ddce1ea1c23ffbaceb4ffe5f49e1"
+    },
+    {
+      "archive": "chibios-contrib.tar.gz",
+      "url": "https://codeload.github.com/qmk/ChibiOS-Contrib/tar.gz/bb8356fb5a3a9bbc1561826f174a9a631c614546",
+      "destination": "qmk_firmware-618127a725a1773e85f13455602cf6f72ab4de17/lib/chibios-contrib",
+      "sha256": "1186b8cfcdf884e1c538f6c729315d5e8158942aad39f05a306e73c10ebbadb3"
+    },
+    {
+      "archive": "printf.tar.gz",
+      "url": "https://codeload.github.com/qmk/printf/tar.gz/c2e3b4e10d281e7f0f694d3ecbd9f320977288cc",
+      "destination": "qmk_firmware-618127a725a1773e85f13455602cf6f72ab4de17/lib/printf",
+      "sha256": "2fabf2d86b4118ab52f6f0d2e5fd6b20bb7a1c2f67f56e2d463753d6cd2bda42"
+    },
+    {
+      "archive": "lufa.tar.gz",
+      "url": "https://codeload.github.com/qmk/lufa/tar.gz/549b97320d515bfca2f95c145a67bd13be968faa",
+      "destination": "qmk_firmware-618127a725a1773e85f13455602cf6f72ab4de17/lib/lufa",
+      "sha256": "01a62a2258dc4fe574290ce5ccc3f947d4e101141a228cc927ae28e58a7bec23"
+    },
+    {
+      "archive": "arm-toolchain.tar.xz",
+      "url": "https://developer.arm.com/-/media/Files/downloads/gnu/13.2.rel1/binrel/arm-gnu-toolchain-13.2.rel1-darwin-arm64-arm-none-eabi.tar.xz",
+      "destination": "arm-gnu-toolchain-13.2.Rel1-darwin-arm64-arm-none-eabi",
+      "sha256": "39c44f8af42695b7b871df42e346c09fee670ea8dfc11f17083e296ea2b0d279"
+    },
+    {
+      "archive": "dfu-util.tar.gz",
+      "url": "https://dfu-util.sourceforge.net/releases/dfu-util-0.11.tar.gz",
+      "destination": "dfu-util-0.11",
+      "sha256": "b4b53ba21a82ef7e3d4c47df2952adf5fa494f499b6b0b57c58c5d04ae8ff19e"
+    }
+  ],
+  "upstream_files": {
+    "keyboards/keychron/k10_pro/k10_pro.c": "bf9e789289f224cda35d9c80d36b5f8db8b3b18c979bd1cd9a99d3337ee88b91",
+    "keyboards/keychron/bluetooth/factory_test.c": "1ad126a481fed48215c6c3a5621fb31dd6fb1e14625da4b593579fd4f36f86c5",
+    "tmk_core/protocol/usb_descriptor.c": "227915f1ad9adb0078c7ab8929b039589cc14d0c0f8e76191d67e125817a5ba0",
+    "quantum/rgb_matrix/rgb_matrix.c": "6a77fe0c002e9dc865bd1e9d8567cdd664857e9865a912666ca6f00a79340390",
+    "keyboards/keychron/k10_pro/ansi/rgb/keymaps/via/keymap.c": "ae4b0a4af932df5a82c2cc67ede831169599051530c1fd9331608dec15b146c3",
+    "keyboards/keychron/bluetooth/indicator.c": "8dc1ead8813864aa867f3d31dc35e5d299460c9347085e9b4ab7776abdba7f6e",
+    "quantum/quantum.c": "935af108c50447639352855f24073ef500319c32165c328574df4686ebe3f392"
+  },
+  "patched_files": {
+    "keyboards/keychron/k10_pro/k10_pro.c": "b400e74aae6a71dd662e4eaef138514002034bfcb7209229ad7eb0a21cbee37c",
+    "keyboards/keychron/bluetooth/factory_test.c": "00480916dbd5ae4031f202776c7f9ea0000c51bdbc18d91c9d72b6c089c3b0cd",
+    "tmk_core/protocol/usb_descriptor.c": "b0bc960a1e6908039a52bcae2776cdd148cd1892ea4e33d75a77da14f62fb0ae",
+    "quantum/rgb_matrix/rgb_matrix.c": "699a3ef3d46771b63b33998dfda1da72311b07271dc087d2301e72e5238f9a43",
+    "keyboards/keychron/k10_pro/ansi/rgb/keymaps/via/keymap.c": "ae4b0a4af932df5a82c2cc67ede831169599051530c1fd9331608dec15b146c3",
+    "keyboards/keychron/bluetooth/indicator.c": "84f63bd3e9e3961ec0311b63d68f14d2c8da7b4be66217bb6d8548907d0db277",
+    "quantum/quantum.c": "e35b11460e9f71e361646a6467a276f0905b194b83be0e6964643a3f321bb394"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "source_page": "https://www.keychron.com/pages/firmware-and-json-files-of-the-keychron-qmk-k-pro-and-k-max-series-keyboards",
+  "label": "Download K10 Pro ANSI RGB Version Firmware",
+  "published_version": "1.00",
+  "published_date": "2023-02-01",
+  "firmware_url": "https://cdn.shopify.com/s/files/1/0059/0630/1017/files/k10_pro_us_rgb_v1.00.bin?v=1675221399",
+  "firmware_sha256": "275dd7f53ba40a355593f8854361c77ccc56d7897af25487d61d96b8f19922ef",
+  "bytes": 57408,
+  "device_readback": false
+}
