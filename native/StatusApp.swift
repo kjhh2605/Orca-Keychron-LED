@@ -74,7 +74,7 @@ final class StatusAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         refreshMenu()
         timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             guard let self else { return }
-            self.statusItem.button?.toolTip = "Orca LED · \(self.bridgeProcess?.isRunning == true ? "실행 중" : "중지됨")"
+            self.updateStatusButton(self.connectionChecks(includeKeyboard: false))
         }
         DispatchQueue.main.async { [weak self] in self?.prepareAndStart() }
     }
@@ -114,6 +114,136 @@ final class StatusAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             ? ["미할당", "대기", "진행 중", "질문·승인 대기", "완료", "오류", "확인 불가", "완료 · 확인함"][state] : "확인 불가"
     }
 
+    // MARK: Connection status
+
+    enum Level: Int { case off = 0, ok, warn, error }
+
+    struct Check {
+        let name: String
+        let detail: String
+        let level: Level
+        var action: Selector? = nil
+    }
+
+    static func reasonLabel(_ code: String) -> String {
+        switch code {
+        case "unsupported_version": return "지원하지 않는 Orca 버전"
+        case "runtime_unavailable", "runtime_closed": return "Orca 런타임에 연결할 수 없음"
+        case "runtime_timeout": return "Orca 런타임 응답 시간 초과"
+        case "runtime_access_denied": return "Orca 런타임 접근 거부"
+        case "runtime_changed": return "Orca가 재시작됨 · 다시 연결 중"
+        case "renderer_unavailable": return "Orca 화면이 아직 준비되지 않음"
+        case "cdp_unavailable", "cdp_closed": return "개발 연결(19347)에 연결할 수 없음"
+        case "cdp_timeout": return "개발 연결 응답 시간 초과"
+        case "cdp_main_target_unavailable", "cdp_target_rejected": return "Orca 메인 화면을 찾지 못함"
+        case "cdp_evaluation_failed": return "Orca 화면 구조가 달라 읽기 실패"
+        case "stale_ui_snapshot", "ui_snapshot_unavailable": return "Orca 화면 정보가 갱신되지 않음"
+        case "ui_order_unavailable": return "작업공간 순서를 읽을 수 없음"
+        case "window_mismatch": return "Orca 창이 바뀜 · 다시 연결 중"
+        case "remote_workspace_unsupported": return "원격 작업공간은 지원하지 않음"
+        default: return "확인 실패 (\(code))"
+        }
+    }
+
+    static func ago(_ seconds: TimeInterval) -> String {
+        seconds < 1 ? "방금" : seconds < 60 ? "\(Int(seconds))초 전" : "\(Int(seconds / 60))분 전"
+    }
+
+    // Cheap checks only: this runs from the 2 s timer as well as on menu open.
+    func connectionChecks(includeKeyboard: Bool) -> [Check] {
+        var checks: [Check] = []
+        let permissions = helper.permissions()
+        let missing = [("손쉬운 사용", "accessibility"), ("입력 모니터링", "input_monitoring")]
+            .filter { permissions[$0.1] as? Bool != true }.map { $0.0 }
+        checks.append(missing.isEmpty ? Check(name: "macOS 권한", detail: "허용됨", level: .ok)
+            : Check(name: "macOS 권한", detail: missing.joined(separator: "·") + " 필요", level: .error, action: #selector(requestPermissions)))
+
+        let installed = Bundle(url: Self.orcaApp)?.infoDictionary?["CFBundleShortVersionString"] as? String
+        let orcaRunning = !Self.runningOrca().isEmpty
+        if installed == nil {
+            checks.append(Check(name: "Orca", detail: "설치되지 않음", level: .error))
+        } else if installed != Self.orcaVersion {
+            checks.append(Check(name: "Orca", detail: "버전 불일치 · 설치 \(installed!) / 지원 \(Self.orcaVersion)", level: .error))
+        } else if !orcaRunning {
+            checks.append(Check(name: "Orca", detail: "실행 중 아님", level: .off))
+        } else if cdpEnabled && !Self.tcpPortOpen(Self.cdpPort) {
+            checks.append(Check(name: "Orca", detail: "일반 모드 · 연동 모드로 다시 열어야 함", level: .warn))
+        } else {
+            checks.append(Check(name: "Orca", detail: "\(Self.orcaVersion) · \(cdpEnabled ? "연동 모드" : "실행 중")", level: .ok))
+        }
+
+        let running = bridgeProcess?.isRunning == true
+        checks.append(preparingOrca ? Check(name: "연동 프로세스", detail: "Orca 준비 중…", level: .warn)
+            : starting ? Check(name: "연동 프로세스", detail: "시작 중…", level: .warn)
+            : stopping ? Check(name: "연동 프로세스", detail: "중지 중…", level: .warn)
+            : running ? Check(name: "연동 프로세스", detail: "실행 중", level: .ok)
+            : Check(name: "연동 프로세스", detail: "중지됨", level: .off))
+
+        let status = runtimeStatus()
+        let updated = status?["updated_at"] as? TimeInterval ?? 0
+        let snapshot = status?["snapshot"] as? [String: Any]
+        let now = Date().timeIntervalSince1970
+        let current = running && updated >= startedAt
+        let stale = current && now - updated >= 6
+        if !running {
+            checks.append(Check(name: "Orca 상태 읽기", detail: "연동 꺼짐", level: .off))
+        } else if !current || snapshot == nil {
+            checks.append(Check(name: "Orca 상태 읽기", detail: "첫 응답 대기 중…", level: .warn))
+        } else if stale {
+            checks.append(Check(name: "Orca 상태 읽기", detail: "응답 없음 · 마지막 갱신 \(Self.ago(now - updated))", level: .error))
+        } else if snapshot?["supported"] as? Bool == true {
+            let total = snapshot?["total_slots"] as? Int ?? 0
+            checks.append(Check(name: "Orca 상태 읽기", detail: "정상 · 작업공간 \(total)개", level: .ok))
+        } else {
+            let reason = snapshot?["reason"] as? String ?? "unknown"
+            checks.append(Check(name: "Orca 상태 읽기", detail: Self.reasonLabel(reason), level: .error))
+        }
+
+        let wireState = current && !stale ? status?["transport"] as? String : nil
+        var keyboard: Check
+        switch wireState {
+        case "host_writes_accepted_unverified":
+            keyboard = Check(name: "키보드", detail: "Bluetooth 전송 중 · 수신 확인 없음", level: .ok)
+        case "disconnected_or_error":
+            keyboard = Check(name: "키보드", detail: "전송 실패 · Bluetooth 연결 확인 필요", level: .error)
+        case "ui_stale_lease_expiring":
+            keyboard = Check(name: "키보드", detail: "Orca 상태가 없어 전송 보류", level: .warn)
+        default:
+            keyboard = Check(name: "키보드", detail: running ? "전송 대기 중…" : "연동 꺼짐", level: running ? .warn : .off)
+        }
+        if includeKeyboard && keyboard.level != .ok {
+            // HID discovery is read-only but not free; only on menu open.
+            let transports = ((try? helper.discover()) ?? []).map { transport($0) }
+            if transports.isEmpty {
+                keyboard = Check(name: "키보드", detail: "K10 Pro를 찾지 못함", level: running ? .error : .off)
+            } else if !transports.contains(where: { $0.hasPrefix("Bluetooth") }) {
+                keyboard = Check(name: "키보드", detail: "USB로만 연결됨 · Bluetooth 모드로 전환 필요", level: running ? .error : .warn)
+            } else if !running {
+                keyboard = Check(name: "키보드", detail: "Bluetooth 연결됨 · 연동 꺼짐", level: .off)
+            }
+        }
+        checks.append(keyboard)
+        return checks
+    }
+
+    static func dot(_ level: Level) -> NSImage? {
+        let color: NSColor = [.off: .tertiaryLabelColor, .ok: .systemGreen, .warn: .systemOrange, .error: .systemRed][level]!
+        return NSImage(systemSymbolName: "circle.fill", accessibilityDescription: nil)?
+            .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 9, weight: .regular)
+                .applying(NSImage.SymbolConfiguration(paletteColors: [color])))
+    }
+
+    func updateStatusButton(_ checks: [Check]) {
+        guard let button = statusItem?.button else { return }
+        let worst = checks.map(\.level).max { $0.rawValue < $1.rawValue } ?? .off
+        let running = bridgeProcess?.isRunning == true
+        button.contentTintColor = worst == .error ? .systemRed : worst == .warn ? .systemOrange : nil
+        button.appearsDisabled = !running && worst != .error
+        let problems = checks.filter { $0.level == .error || $0.level == .warn }
+        button.toolTip = "Orca LED · " + (problems.isEmpty ? (running ? "정상 연결" : "중지됨")
+            : problems.map { "\($0.name): \($0.detail)" }.joined(separator: "\n"))
+    }
+
     func refreshMenu() {
         menu.removeAllItems()
         menu.autoenablesItems = false
@@ -128,13 +258,17 @@ final class StatusAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             && snapshot?["supported"] as? Bool == true && snapshot?["app_running"] as? Bool == true
             && status?["transport"] as? String == "host_writes_accepted_unverified"
         item("Orca LED · K10 Pro")
-        item(preparingOrca ? "Orca 연동 모드 준비 중…" : starting ? "시작 확인 중…" : stopping ? "안전하게 중지하는 중…" : running ? "연동 프로세스 실행 중" : "연동 중지됨")
+        item("연결 상태")
+        let checks = connectionChecks(includeKeyboard: true)
+        for check in checks {
+            let row = item("\(check.name)  ·  \(check.detail)", action: check.action)
+            row.image = Self.dot(check.level)
+            row.indentationLevel = 1
+            if check.action == nil { row.isEnabled = true }  // Keep text legible; it has no action.
+        }
+        updateStatusButton(checks)
         if let error = status?["error"] as? String, fresh, !error.isEmpty { item("주의: " + Self.compact(error)) }
-        else if running && !fresh { item("상태를 기다리는 중 · 연결 완료는 아직 확인되지 않음") }
-        else if fresh {
-            let transport = status?["transport"] as? String ?? ""
-            item(transport == "host_writes_accepted_unverified" ? "Bluetooth 전송 요청됨 · LED 수신 확인 없음" : "전송 상태: " + Self.compact(transport))
-        } else { item(Self.compact(lastMessage)) }
+        else if !running || preparingOrca { item(Self.compact(lastMessage)) }
         menu.addItem(.separator())
         item("펌웨어 검증 후 시작", action: #selector(startFromMenu), enabled: !running && !starting && !checkingFirmware && !preparingOrca)
         item("연동 중지", action: #selector(stopBridge), enabled: running && !stopping)
