@@ -12,6 +12,6 @@ xcrun swiftc -swift-version 6 -O -target "$SETTINGS_ARCH-apple-macosx14.0" \
 cp "$PROJECT_DIR/native/settings/Info.plist" "$APP_PATH/Contents/Info.plist"
 mkdir -p "$APP_PATH/Contents/Resources"
 cp "$("$PROJECT_DIR/scripts/build-icon.sh")" "$APP_PATH/Contents/Resources/AppIcon.icns"
-codesign --force --sign - "$APP_PATH"
+codesign --force --sign "$("$PROJECT_DIR/scripts/signing-identity.sh")" "$APP_PATH"
 "$APP_PATH/Contents/MacOS/OrcaLEDSettings" --self-test
 printf '%s\n' "$APP_PATH"

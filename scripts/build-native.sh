@@ -10,7 +10,7 @@ xcrun swiftc -swift-version 5 -O \
 cp "$PROJECT_DIR/native/Info.plist" "$APP_PATH/Contents/Info.plist"
 mkdir -p "$APP_PATH/Contents/Resources"
 cp "$("$PROJECT_DIR/scripts/build-icon.sh")" "$APP_PATH/Contents/Resources/AppIcon.icns"
-codesign --force --sign - "$APP_PATH"
+codesign --force --sign "$("$PROJECT_DIR/scripts/signing-identity.sh")" "$APP_PATH"
 cat > "$PROJECT_DIR/build/orca-keychron-helper" <<'SH'
 #!/bin/sh
 set -eu

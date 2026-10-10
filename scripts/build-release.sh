@@ -26,8 +26,9 @@ cp "$PROJECT_DIR/LICENSE" "$PROJECT_DIR/THIRD_PARTY_NOTICES.md" "$RESOURCES/"
 cp -R "$PROJECT_DIR/build/Orca LED Settings.app" "$HELPERS/"
 
 # Sign inside-out: the embedded settings app first, then the outer bundle.
-codesign --force --sign - "$HELPERS/Orca LED Settings.app"
-codesign --force --sign - "$APP_PATH"
+IDENTITY=$("$PROJECT_DIR/scripts/signing-identity.sh")
+codesign --force --sign "$IDENTITY" "$HELPERS/Orca LED Settings.app"
+codesign --force --sign "$IDENTITY" "$APP_PATH"
 codesign --verify --deep --strict "$APP_PATH"
 
 # Smoke checks: the bundled package imports, and the helper passes its self-test.
