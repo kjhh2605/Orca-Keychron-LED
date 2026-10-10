@@ -39,8 +39,8 @@ if ! orca_version=$(/usr/bin/plutil -extract CFBundleShortVersionString raw -o -
   print -u2 'Orca 설치 버전을 읽을 수 없어 시작을 중단했습니다.'
   exit 1
 fi
-if [[ "$orca_version" != '1.4.216' ]]; then
-  print -u2 '이 연동은 Orca 1.4.216용입니다. 앱 버전이 달라 실행을 중단했습니다.'
+if [[ "$orca_version" != '1.4.223' ]]; then
+  print -u2 '이 연동은 Orca 1.4.223용입니다. 앱 버전이 달라 실행을 중단했습니다.'
   exit 1
 fi
 if /usr/sbin/lsof -nP -iTCP:"$orca_debug_port" -sTCP:LISTEN >/dev/null 2>&1; then

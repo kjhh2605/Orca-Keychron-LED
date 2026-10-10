@@ -7,7 +7,7 @@ import Foundation
 final class StatusAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     static let orcaApp = URL(fileURLWithPath: "/Applications/Orca.app")
     static let orcaBundleID = "com.stablyai.orca"
-    static let orcaVersion = "1.4.216"
+    static let orcaVersion = "1.4.223"
     static let cdpPort = 19347
 
     let helper: Helper

@@ -8,7 +8,7 @@ Orca에서 여러 AI 코딩 에이전트를 동시에 돌리다 보면 어느 �
 
 *설정 앱의 예시 미리보기입니다. 실제 작업 정보는 포함하지 않습니다.*
 
-> **실험 단계의 개인 프로젝트입니다.** 대상은 **Keychron K10 Pro ANSI RGB · macOS · Orca 1.4.216** 조합 하나입니다. 키보드에 커스텀 펌웨어를 설치해야 합니다. Orca 또는 Keychron의 공식 제품이나 공식 연동이 아닙니다.
+> **실험 단계의 개인 프로젝트입니다.** 대상은 **Keychron K10 Pro ANSI RGB · macOS · Orca 1.4.223** 조합 하나입니다. 키보드에 커스텀 펌웨어를 설치해야 합니다. Orca 또는 Keychron의 공식 제품이나 공식 연동이 아닙니다.
 
 [설치·펌웨어](docs/public/INSTALL.md) · [사용법·문제 해결](docs/public/USAGE.md) · [상태 판단 기준](docs/public/STATUS.md) · [통신 프로토콜](docs/protocol.md) · [공개본 만들기](docs/public/PUBLISHING.md)
 
@@ -57,7 +57,7 @@ Orca 작업공간 순서와 에이전트 상태
 |---|---|
 | 키보드 | Keychron K10 Pro **ANSI RGB** (USB `3434:02A0`) + 이 프로젝트의 펌웨어 |
 | Mac | Apple Silicon, macOS 14 Sonoma 이상 |
-| Orca | **1.4.216**, `/Applications/Orca.app`에 설치 |
+| Orca | **1.4.223**, `/Applications/Orca.app`에 설치 |
 | Python | 3.9 이상. macOS 기본 Python(Xcode Command Line Tools)으로 충분합니다 |
 | 케이블 | 펌웨어 설치 때만 USB **데이터** 케이블 필요 |
 

@@ -1,6 +1,6 @@
 """Read-only Orca state adapter and explicitly targeted workspace navigation.
 
-Orca 1.4.216's runtime API is an internal, version-specific interface. Its
+Orca 1.4.223's runtime API is an internal, version-specific interface. Its
 terminal/worktree list order is NOT the Cmd+number order. A live UI provider
 must supply that order; without one the adapter returns supported=False.
 """
@@ -18,7 +18,7 @@ from typing import Any, Callable
 EMPTY, IDLE, RUNNING, WAITING, COMPLETE, ERROR, UNKNOWN = range(7)
 STATE_NAMES = ("empty", "idle", "running", "waiting", "complete", "error", "unknown")
 STOP_HOOK_AGENTS = frozenset({"codex", "claude"})
-TESTED_ORCA_VERSION = "1.4.216"
+TESTED_ORCA_VERSION = "1.4.223"
 MAX_RESPONSE_BYTES = 8 * 1024 * 1024
 HOOK_STALE_AFTER_MS = 30 * 60 * 1000
 UI_MAX_AGE_SECONDS = 3.0

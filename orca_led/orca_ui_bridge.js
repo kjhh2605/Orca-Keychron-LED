@@ -1,15 +1,15 @@
-/* Orca 1.4.216 renderer bridge. Load in Orca's MAIN renderer, never a browser tab.
+/* Orca 1.4.223 renderer bridge. Load in Orca's MAIN renderer, never a browser tab.
  * This file is inert until installOrcaLedBridge(options) is called. It neither
  * patches the app bundle nor starts/answers agents. The module names and export
- * symbols are pinned to app build 84daac2de447bf1966ea573fae03ff796ce5779f.
+ * symbols are pinned to the Orca 1.4.223 renderer build.
  * Requires options.publish(snapshot), supplied by the trusted host integration.
  */
 (() => {
   const KEY = "__orcaLedBridgeV1";
-  const VERSION = "1.4.216";
+  const VERSION = "1.4.223";
   const BUILD_MODULES = {
-    activation: "./assets/worktree-activation-D6bsPnag.js",
-    store: "./assets/store-U3p5kNAJ.js",
+    activation: "./assets/worktree-activation-D0sk4KxD.js",
+    store: "./assets/store-J2Yw4OnJ.js",
   };
 
   globalThis.installOrcaLedBridge = async function installOrcaLedBridge(options) {
@@ -23,14 +23,14 @@
       api.runtime.getStatus(), api.updater.getVersion(),
     ]);
     if (appVersion !== VERSION || !status.runtimeId || !status.authoritativeWindowId) {
-      throw new Error("This bridge requires the verified Orca 1.4.216 desktop build.");
+      throw new Error("This bridge requires the verified Orca 1.4.223 desktop build.");
     }
     const [activation, storeModule] = await Promise.all([
       import(new URL(BUILD_MODULES.activation, document.baseURI).href),
       import(new URL(BUILD_MODULES.store, document.baseURI).href),
     ]);
     const store = storeModule.t;
-    if (typeof activation.d !== "function" || typeof store?.getState !== "function") {
+    if (typeof activation.s !== "function" || typeof store?.getState !== "function") {
       throw new Error("Orca renderer exports changed; bridge refused to start.");
     }
     if (globalThis[KEY]) await globalThis[KEY].stop();
@@ -39,7 +39,7 @@
     let lastError = null;
     const sample = () => {
       // These exact exports are called by Orca's Cmd+1..9 handler. Do not sort.
-      const rows = activation.d();
+      const rows = activation.s();
       const state = store.getState();
       if (!Array.isArray(rows) || typeof state.getKnownWorktreeById !== "function") {
         throw new Error("Orca did not return its current numbered workspace order.");

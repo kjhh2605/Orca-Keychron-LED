@@ -43,13 +43,13 @@ def _expression(runtime_id: str, window_id: int) -> str:
         throw new Error('Orca runtime or authoritative window changed');
       }
       const [activation, storeModule] = await Promise.all([
-        import(new URL('./assets/worktree-activation-D6bsPnag.js', expected.url).href),
-        import(new URL('./assets/store-U3p5kNAJ.js', expected.url).href)
+        import(new URL('./assets/worktree-activation-D0sk4KxD.js', expected.url).href),
+        import(new URL('./assets/store-J2Yw4OnJ.js', expected.url).href)
       ]);
-      if (typeof activation.d !== 'function' || typeof storeModule.t?.getState !== 'function') {
+      if (typeof activation.s !== 'function' || typeof storeModule.t?.getState !== 'function') {
         throw new Error('Orca renderer exports changed');
       }
-      const rows = activation.d();
+      const rows = activation.s();
       const state = storeModule.t.getState();
       if (!Array.isArray(rows) || rows.length > 10000 ||
           typeof state.getKnownWorktreeById !== 'function') {

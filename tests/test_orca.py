@@ -22,7 +22,7 @@ class FakeRPC:
     def __init__(self, workspaces=None):
         self.calls = []
         self.runtime_id = "runtime-1"
-        self.version = "1.4.216"
+        self.version = "1.4.223"
         self.workspaces = workspaces if workspaces is not None else [
             {"worktree": "repo::/b", "tabs": [{"type": "terminal", "id": "tab-b", "agentStatus": hook("done")}]},
             {"worktree": "repo::/a", "tabs": [{"type": "terminal", "id": "tab-a", "agentStatus": hook("working")}]},

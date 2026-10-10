@@ -25,7 +25,7 @@ def target(**changes):
 
 
 def snapshot(**changes):
-    return {"schema": 1, "source": "orca-renderer", "app_version": "1.4.216",
+    return {"schema": 1, "source": "orca-renderer", "app_version": "1.4.223",
             "runtime_id": "runtime1", "window_id": 1, "producer_id": "producer1",
             "sequence": 17, "captured_at": 1800000000.0,
             "active_view": "terminal", "modal_open": False,
@@ -38,7 +38,7 @@ def snapshot(**changes):
 
 class FakeRPC:
     def __init__(self, **changes):
-        self.status = {"runtimeId": "runtime1", "appVersion": "1.4.216",
+        self.status = {"runtimeId": "runtime1", "appVersion": "1.4.223",
                        "authoritativeWindowId": 1, "graphStatus": "ready",
                        "desktopWindowStatus": "available", **changes}
         self.calls = []
@@ -64,7 +64,7 @@ const url = 'file:///Applications/Orca.app/Contents/Resources/app.asar/out/rende
 const context = createContext({URL, location:{href:url}, document:{baseURI:url}, api:{
   runtime:{getStatus:async()=>({runtimeId:'runtime1', authoritativeWindowId:1,
     graphStatus:'ready', desktopWindowStatus:'available'})},
-  updater:{getVersion:async()=>'1.4.216'},
+  updater:{getVersion:async()=>'1.4.223'},
   agentStatus:{getSnapshot:async()=>[{
     state:'done', agentType:'codex', paneKey:'parent:leaf', terminalHandle:'terminal1',
     tabId:'parent', worktreeId:'repo::/a', receivedAt:1799999999975,
@@ -78,10 +78,10 @@ const context = createContext({URL, location:{href:url}, document:{baseURI:url},
 new Script('globalThis.top=globalThis').runInContext(context);
 const ordered = [{id:'repo::/z'}, {id:'repo::/a'}];
 const modules = {
-  'worktree-activation-D6bsPnag.js':new SyntheticModule(['d'], function(){
-    this.setExport('d', ()=>ordered);
+  'worktree-activation-D0sk4KxD.js':new SyntheticModule(['s'], function(){
+    this.setExport('s', ()=>ordered);
   }, {context}),
-  'store-U3p5kNAJ.js':new SyntheticModule(['t'], function(){
+  'store-J2Yw4OnJ.js':new SyntheticModule(['t'], function(){
     this.setExport('t', {getState:()=>({activeWorktreeId:'repo::/a',
       activeWorkspaceExecutionHostId:'local', activeView:'terminal', activeModal:'none',
       getKnownWorktreeById:(id)=>({displayName:id.endsWith('/a')?'Agent A':'Agent Z'})})});
@@ -102,7 +102,7 @@ const modules = {
                                 input=json.dumps(_expression("runtime1", 1)), text=True,
                                 capture_output=True, timeout=5, check=True)
         value = json.loads(result.stdout)
-        self.assertEqual(value["app_version"], "1.4.216")
+        self.assertEqual(value["app_version"], "1.4.223")
         self.assertEqual(value["runtime_id"], "runtime1")
         self.assertEqual(value["window_id"], 1)
         self.assertEqual([row["id"] for row in value["slots"]], ["repo::/z", "repo::/a"])
