@@ -33,6 +33,44 @@ def main():
     for source in (ROOT / "src").glob("*.[ch]"):
         shutil.copy2(source, dest / source.name)
     (dest / "rules.mk").write_text("VIA_ENABLE = yes\nOPT_DEFS += -DORCA_LED_ENABLE\nEXTRAINCDIRS += $(KEYMAP_PATH)\nSRC += $(KEYMAP_PATH)/orca_led.c $(KEYMAP_PATH)/orca_input.c $(KEYMAP_PATH)/orca_qmk.c\n")
+    header = board / "k10_pro.h"
+    inject(header, "#define KC_MICT QK_KB_0\n#define KC_LAPA QK_KB_1\n\n#ifdef VIA_ENABLE\n#    define USER_START QK_KB_2\n", """#if defined(ORCA_LED_ENABLE) && defined(VIA_ENABLE)
+/* Keychron's official K10 Pro firmware and VIA JSON order: Option/Command
+ * first, then Mission Control/Launchpad. Keymaps saved under the official
+ * firmware keep their meaning after installing this firmware. */
+#    define ORCA_KEYCHRON_KEYCODE_ORDER
+#    define KC_MICT QK_KB_4
+#    define KC_LAPA QK_KB_5
+#else
+#define KC_MICT QK_KB_0
+#define KC_LAPA QK_KB_1
+#endif
+
+#ifdef VIA_ENABLE
+#  ifdef ORCA_KEYCHRON_KEYCODE_ORDER
+#    define USER_START QK_KB_0
+#  else
+#    define USER_START QK_KB_2
+#  endif
+""")
+    inject(header, "    KC_RCMMD,\n", """    KC_RCMMD,
+#ifdef ORCA_KEYCHRON_KEYCODE_ORDER
+    ORCA_KC_MICT_SLOT,
+    ORCA_KC_LAPA_SLOT,
+#endif
+""")
+    inject(header, "\tNEW_SAFE_RANGE\n};\n", """\tNEW_SAFE_RANGE
+};
+
+#ifdef ORCA_KEYCHRON_KEYCODE_ORDER
+_Static_assert((int)KC_LOPTN == (int)QK_KB_0 && (int)KC_RCMMD == (int)QK_KB_3, "Keychron Option/Command keycodes");
+_Static_assert((int)ORCA_KC_MICT_SLOT == (int)KC_MICT && (int)ORCA_KC_LAPA_SLOT == (int)KC_LAPA, "Keychron Mission Control/Launchpad keycodes");
+_Static_assert((int)KC_TASK == (int)QK_KB_6 && (int)KC_SIRI == (int)QK_KB_10, "Keychron Windows/Siri keycodes");
+#    ifdef KC_BLUETOOTH_ENABLE
+_Static_assert((int)BT_HST1 == (int)QK_KB_11 && (int)BAT_LVL == (int)QK_KB_14, "Keychron Bluetooth keycodes");
+#    endif
+#endif
+""")
     inject(board / "k10_pro.c", "bool via_command_kb(uint8_t *data, uint8_t length) {", """#ifdef ORCA_LED_ENABLE
 bool orca_led_raw_hid(uint8_t *data, uint8_t length);
 #endif
