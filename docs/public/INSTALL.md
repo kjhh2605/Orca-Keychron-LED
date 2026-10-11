@@ -47,7 +47,9 @@ open "build/Orca LED Settings.app"
 
 결과의 `k10_pro_ansi_rgb_orca_led.bin`은 커스텀 이미지입니다. `k10_pro_ansi_rgb_upstream_via_rebuilt.bin`은 같은 고정 소스에서 재빌드한 VIA 이미지이며 **사용자 기기에서 읽은 원본 백업이 아닙니다.**
 
-새 색상·효과 설정은 `THEME 0x16`을 처리하는 펌웨어가 필요합니다. 기존 기본 조명 펌웨어에서 설정 앱만 실행해도 새 색상이 적용된다고 가정하면 안 됩니다. 개발 검증 기기에서는 새 펌웨어의 실제 설치·전체 쓰기 내용 읽기 비교·USB 테마 지원 응답과 청록색 표시를 확인했습니다. 기존 키맵·매크로·레이아웃·조명 설정도 유지됐습니다. 이 결과가 다른 기기의 백업과 호환성 확인을 대신하지는 않습니다.
+새 색상·효과 설정은 `THEME 0x16`을 처리하는 펌웨어가 필요합니다. 기존 기본 조명 펌웨어에서 설정 앱만 실행해도 새 색상이 적용된다고 가정하면 안 됩니다.
+
+현재 빌드는 **Keychron Launcher로 최신화한 공식 펌웨어(VIA 12, 빌드 2025-09-22) → 원본 플래시·ROM 식별값 읽기 → 설치 → 쓰기 내용 읽기 비교 → USB 테마 지원 확인**까지 실기에서 확인했습니다. 설치 후 VIA 키맵과 조명은 컴파일된 기본값으로 초기화됩니다([Mac 키 코드 호환성](#mac-키-코드-호환성) 참고). 이 결과가 다른 기기의 백업과 호환성 확인을 대신하지는 않습니다.
 
 ## 3. 백업과 설치 범위 확인
 
@@ -56,10 +58,61 @@ open "build/Orca LED Settings.app"
 ```sh
 python3 scripts/backup-via.py --help
 python3 firmware/flash.py --help
-python3 scripts/restore-via.py --help
 ```
 
 `backup-via.py`는 같은 내용을 두 번 읽고 비교하는 도구입니다. 백업 파일과 해시는 개인적으로 보관하고 GitHub에 올리지 않습니다. 펌웨어 교체 전에는 키맵 백업 외에 자신의 장치에서 읽은 원본 플래시와 복구 절차도 확보해야 합니다.
+
+### VIA 프로토콜이 12가 아니면: Keychron Launcher로 공식 펌웨어 최신화
+
+백업·설치 도구는 **VIA 프로토콜 12**만 검토했습니다. 출고 당시의 오래된 공식 펌웨어는 VIA 10을 사용하며, 이때 `backup-via.py`는 다음 메시지와 함께 아무것도 쓰지 않고 멈춥니다.
+
+```
+Unreviewed VIA protocol 10; backup stopped
+```
+
+이 경우 검사를 우회하거나 VIA 10용 변환을 만들지 말고, **[Keychron Launcher](https://launcher.keychron.com)에서 키보드 펌웨어를 최신 공식 버전으로 업데이트**합니다. Chrome·Edge 같은 Chromium 계열 브라우저에서 Launcher를 열고, 키보드를 USB 데이터 케이블과 **Cable** 모드로 연결한 뒤 펌웨어 업데이트를 진행합니다. 업데이트가 끝나면 Launcher와 다른 설정 프로그램을 닫고 `backup-via.py`를 다시 실행해 `"via_protocol": 12`인지 확인합니다.
+
+공식 펌웨어 업데이트는 이전 공식 펌웨어를 대체하며 키맵·조명이 초기화될 수 있습니다. 이후 단계의 "원본"은 **최신화한 공식 펌웨어를 자신의 기기에서 읽은 것**입니다. 공식 펌웨어 자체는 Launcher에서 다시 설치할 수 있습니다.
+
+### 실행 예시
+
+아래 `<…>`는 자신의 기기에서 새로 확인한 값으로 채웁니다. 다른 사람의 serial·경로·근거 파일을 쓰지 않습니다. 백업과 설치 기록은 `firmware/backups/`(Git 제외)에 저장됩니다.
+
+```sh
+# 1. Cable 모드: 키맵·매크로·조명을 두 번 읽어 백업 (쓰기 없음)
+python3 scripts/backup-via.py
+
+# 2. 물리 Reset으로 DFU 진입 후 장치 확인
+firmware/vendor/dfu-tools/bin/dfu-util -l
+#    alt=0 "@Internal Flash  /0x08000000/0128*0002Kg" → 2K × 128 = 256 KiB
+
+# 3. 원본 플래시를 두 번 읽어 보관 (쓰기 없음, DFU 유지)
+python3 firmware/flash.py --image custom --backup <via 백업>/backup.json \
+  --serial <serial> --device-path <path> --flash-size 262144 --execute --readback-only
+```
+
+`--flash-size`는 DFU가 알리는 크기와 정확히 같아야 합니다. 검증한 K10 Pro는 **256 KiB(`262144`)**를 알렸습니다. 다르면 도구가 중단하며, 값을 바꿔 맞추지 말고 하드웨어를 다시 확인합니다.
+
+공식 펌웨어를 최신화한 기기는 현재 플래시가 저장소의 알려진 이미지와 바이트 단위로 일치하지 않으므로, `flash.py`가 **설치된 펌웨어·ROM 프로필 근거**를 요구합니다. 이 근거는 자신의 기기에서 읽은 값으로만 만듭니다.
+
+- **ROM 식별값:** 시스템 메모리 `0x1FFF6FF0`의 16바이트를 두 번 읽어 같은지 확인합니다. dfu-util은 이 주소가 Internal Flash 메모리 맵 밖이라 거부하므로 `:force`로 읽습니다. 읽기 전용이며 쓰기 명령에는 `:force`를 쓰지 않습니다. 검증한 기기의 값은 `ffff1000120011002000220031009100`입니다.
+
+  ```sh
+  firmware/vendor/dfu-tools/bin/dfu-util -d 0483:df11 -a 0 -S <serial> -p <path> \
+    -s 0x1FFF6FF0:16:force -U <원본 읽기 폴더>/rom-identification.bin
+  ```
+
+- **근거 파일:** 3번에서 만든 원본 읽기 폴더(`receipt.json`, `current-flash-read1.bin`, `current-flash-read2.bin`이 있는 곳)에 `hardware-evidence.json`을 둡니다. 필드는 `tests/firmware/test_flash.py`의 `installed_firmware_and_rom_profile` 예시와 같고, `serial`·`device_path`·`installed_flash_sha256`(원본 읽기 해시)·`rom_identification_sha256`은 자신의 읽기 결과로 채웁니다. `flash.py`는 원본 해시, 두 읽기의 일치, 원본 안의 `STM32L432`·`Keychron K10 Pro` 문자열 위치, ROM 식별값을 모두 다시 확인하고 쓰기 범위를 앞 128 KiB로 제한합니다.
+
+```sh
+# 4. 쓰기·읽기 비교·DFU 종료 (케이블 유지)
+python3 firmware/flash.py --image custom --backup <via 백업>/backup.json \
+  --serial <serial> --device-path <path> --flash-size 262144 \
+  --hardware-evidence <원본 읽기 폴더>/hardware-evidence.json --execute
+
+# 5. 일반 USB 복귀 후 키맵을 다시 읽어 설치 전 백업과 비교
+python3 scripts/backup-via.py
+```
 
 `flash.py`는 기본적으로 설치 계획만 출력합니다. 실행 시에도 정확한 기기 식별, 검증한 백업, 지원하는 메모리 범위, 원본 일치 조건을 요구하며 실제 쓴 내용도 다시 읽어 비교합니다. 다른 사람의 장치 번호·하드웨어 근거를 복사하거나 검증 조건을 우회하지 마세요. DFU 재진입과 물리 Reset 버튼 조작은 사용자 단계입니다. 모델별 물리 절차는 [Keychron 공식 안내](https://www.keychron.com/pages/firmware-and-json-files-of-the-keychron-qmk-k-pro-and-k-max-series-keyboards)를 확인합니다.
 
@@ -68,14 +121,14 @@ python3 scripts/restore-via.py --help
 ![백업·DFU 설치·읽기 검증·USB 복귀·Bluetooth 전환 순서](firmware-flow.svg)
 
 1. **LED 연동 중지.** 다른 키보드 설정 프로그램도 닫고, USB 데이터 케이블을 연결한 뒤 **Cable** 모드에서 일반 키 입력과 장치 인식을 확인합니다.
-2. **현재 설정 백업과 원본 백업 유무 확인.** Cable 모드에서 자신의 키맵·매크로·레이아웃·조명을 두 번 읽어 비교합니다. 검증한 원본 펌웨어 백업이 이미 있는지도 확인합니다. 첫 설치의 원본 플래시 읽기는 아래 DFU 단계에서 수행합니다. 키맵 JSON만으로 펌웨어 전체를 복구할 수는 없습니다. 업데이트 때는 현재 설정과 직전 성공 설치 기록도 보존합니다.
+2. **현재 설정 백업과 원본 백업 유무 확인.** 백업이 VIA 프로토콜 문제로 멈추면 먼저 [Keychron Launcher로 공식 펌웨어를 최신화](#via-프로토콜이-12가-아니면-keychron-launcher로-공식-펌웨어-최신화)합니다. Cable 모드에서 자신의 키맵·매크로·레이아웃·조명을 두 번 읽어 비교합니다. 검증한 원본 펌웨어 백업이 이미 있는지도 확인합니다. 첫 설치의 원본 플래시 읽기는 아래 DFU 단계에서 수행합니다. 키맵 JSON만으로 펌웨어 전체를 복구할 수는 없습니다. 업데이트 때는 현재 설정과 직전 성공 설치 기록도 보존합니다.
 3. **이미지와 대상 확인.** 모델·PCB/MCU·쓰기 범위·펌웨어 해시·키 코드 체계가 해당 기기와 맞는지 확인합니다. 도구가 거부하는 조건을 강제로 해제하지 않습니다.
 4. **DFU 진입과 원본 확보.** 아래 물리 Reset 절차로 진입하고, 도구에서 올바른 업데이트 장치인지 확인합니다. 첫 설치라면 이 단계에서 자신의 원본 펌웨어와 설정 영역을 두 번 읽어 일치를 검증하고 보관합니다. 검증된 원본 백업이 준비되기 전에는 쓰지 않습니다.
 5. **쓰기와 읽기 검증.** 검증된 절차로 설치한 뒤 쓴 내용을 다시 읽어 이미지와 비교합니다. **쓰기 시작부터 읽기 검증과 정상 USB 복귀가 끝날 때까지 케이블을 빼거나 전원을 전환하지 않습니다.** 백업과 설치 기록은 성공 뒤에도 보관합니다.
 6. **일반 USB 상태 재확인.** Cable 모드의 키보드로 돌아온 뒤 Command·Option 등 일반 키와 기존 설정을 확인합니다. 키맵·매크로·레이아웃·조명은 설치 전후 읽기 결과를 비교합니다. **읽기 결과뿐 아니라 키 코드의 의미도 일치하고 일반 키 동작이 정상이라면** 복원 쓰기는 필요 없습니다.
 7. **커스텀 펌웨어의 테마 지원 확인 후 BT 전환.** [USB 테마 확인](#5-색상과-효과)을 마치고 BT 모드로 연결한 뒤 LED 연동을 시작합니다. 이때부터 케이블은 선택 사항입니다. **이 단계는 커스텀 펌웨어 설치·업데이트용이며, 원본 펌웨어 복원에는 적용하지 않습니다.**
 
-이 흐름은 필요한 확인 순서입니다. 장치 번호나 개인 원본을 생략한 범용 쓰기 명령을 제공하지 않습니다. `flash.py`의 계획과 검증 결과를 해당 기기의 근거와 함께 검토해야 합니다.
+이 흐름은 필요한 확인 순서입니다. 장치 번호나 개인 원본을 생략한 범용 쓰기 명령을 제공하지 않습니다. 위 실행 예시도 자신의 값으로 채워야 동작하며, `flash.py`의 계획과 검증 결과를 해당 기기의 근거와 함께 검토해야 합니다.
 
 ### Reset 버튼과 DFU 진입
 
@@ -87,11 +140,16 @@ DFU를 확인하려고 키맵 초기화나 공장 초기화를 먼저 할 필요
 
 ### Mac 키 코드 호환성
 
-VIA 프로토콜 버전이 같아도 일부 사용자 정의 키 코드의 의미가 다를 수 있습니다. 초기 검증에서 Command·Option·Mission Control·Launchpad의 6개 코드 순서 차이를 발견했습니다. **기존 키맵의 바이트가 똑같이 복원됐다는 것만으로 기능까지 복원됐다고 판단하면 안 됩니다.**
+`orca_led` 펌웨어는 **Keychron 공식 펌웨어와 같은 사용자 정의 키코드 순서**(`0x7E00` Left Option … `0x7E04` Mission Control, `0x7E05` Launchpad, 이후 `0x7E0E` Battery Level까지)를 사용합니다. 공식 펌웨어에서 쓰던 키맵이 같은 의미로 동작하며, VIA에서는 공식 정의 파일 `firmware/recovery/k10_pro_us_rgb_v1.0.json`을 사용합니다.
 
-`official-to-pinned-618127a` 프로필은 검증한 원본 키맵에만 적용됩니다. 이미 6개 키가 보정된 키맵에는 `repaired-pinned-618127a` 프로필로 기존 코드를 유지하며, 변환을 두 번 적용하지 않습니다. 두 프로필 모두 검증한 키맵 해시와 호환 이미지에만 적용됩니다. 범용 자동 변환기가 아니며, 다른 키맵·펌웨어에서 실패하면 그 조건을 제거하는 대신 해당 조합을 검증해야 합니다. 펌웨어 전체를 실제 원본으로 돌릴 때는 원본의 키 코드 체계를 그대로 복원해야 합니다.
+QMK는 VIA EEPROM에 **펌웨어 빌드 날짜(YYMMDD)**를 표시로 저장합니다. 빌드 날짜가 이전 펌웨어와 다르면 설치 후 키맵은 컴파일된 기본 키맵으로, 매크로는 빈 상태로, 레이아웃 옵션은 기본값으로 초기화됩니다. 2026-10-11 설치에서는 Option·Command·Mission Control·Launchpad를 포함한 사용자 정의 키가 모두 그대로였고, 다음 기본값 차이만 생겼습니다. 조명 효과·색상도 기본값으로 돌아갔습니다.
 
-현재 고정된 커스텀 키 코드 체계로 VIA를 편집할 때는 `firmware/recovery/k10_pro_ansi_rgb_orca_led_618127a_via.json`을 사용합니다. 원본 Keychron JSON은 비교용으로 별도 보존합니다. 새 소스에서 키 코드 체계를 바꿨다면 정의 파일도 다시 확인해야 합니다.
+| 위치 | 공식 펌웨어 최신화 후 | 설치 후 기본값 |
+|---|---|---|
+| 맨 윗줄 오른쪽 4개 키 | F17, F17, 이전 곡, 다음 곡 | F13, F14, F15, F16 |
+| 레이어 1·3(0부터 셈)의 같은 위치 키 | 투명(`KC_TRNS`) | NKRO 토글 |
+
+설치 전 백업과 비교한 뒤 필요한 키는 VIA에서 다시 지정합니다. 펌웨어 전체를 실제 원본으로 돌릴 때는 원본의 키 코드 체계를 그대로 복원해야 합니다.
 
 ## 4. Orca 연결
 
@@ -125,7 +183,14 @@ Orca가 실제 Codex `Stop`을 관측한 경우 완료 조명으로 매핑합니
 python3 -m orca_led --helper "build/Orca LED.app/Contents/MacOS/OrcaLED" verify-theme
 ```
 
-이 명령은 기기의 테마 지원 응답을 읽고 `runtime/theme-firmware.json`에 확인 결과를 저장합니다. 키맵이나 펌웨어를 쓰지 않습니다. 기존 메뉴의 **USB 펌웨어 확인**만으로는 테마 지원 확인 파일이 만들어지지 않습니다. 확인이 성공하면 BT 모드로 돌아가 연동을 다시 시작합니다. 펌웨어를 교체했을 때도 다시 확인하세요.
+`/Applications`에 설치한 앱을 사용한다면 그 앱의 helper와 설정 폴더를 지정합니다. 설치된 앱은 저장소의 `runtime/`이 아니라 `~/Library/Application Support/Orca LED/runtime/`을 읽습니다.
+
+```sh
+python3 -m orca_led --helper "/Applications/Orca LED.app/Contents/MacOS/OrcaLED" verify-theme \
+  --receipt-file "$HOME/Library/Application Support/Orca LED/runtime/theme-firmware.json"
+```
+
+성공하면 `"theme_supported": true`, `"theme_protocol": 2`가 출력됩니다. 이 명령은 기기의 테마 지원 응답을 읽고 지정한 위치(기본값 `runtime/theme-firmware.json`)에 확인 결과를 저장합니다. 키맵이나 펌웨어를 쓰지 않습니다. 기존 메뉴의 **USB 펌웨어 확인**만으로는 테마 지원 확인 파일이 만들어지지 않습니다. 확인이 성공하면 BT 모드로 돌아가 연동을 다시 시작합니다. 펌웨어를 교체했을 때도 다시 확인하세요.
 
 `Orca LED Settings.app`에서 진행 중·질문·완료·오류·대기·확인 불가의 색상, 개별 밝기, 효과와 주기를 설정합니다. 전체 밝기도 조정할 수 있습니다. 화면 미리보기는 키보드에 전송하지 않고 확인할 수 있으며, 저장·적용 결과와 실제 전송 상태를 구분해서 봅니다.
 
@@ -137,7 +202,7 @@ python3 -m orca_led --helper "build/Orca LED.app/Contents/MacOS/OrcaLED" verify-
 
 원본 복원의 쓰기·읽기 검증·정상 USB 복귀가 끝나면 일반 키와 자신의 설정을 확인하고 **일반 키보드로 사용합니다.** Cable 또는 BT는 일반 키보드 사용 목적에 맞게 선택할 수 있지만, **USB 커스텀 테마 확인·테마 전송·Orca LED 연동 시작 단계는 수행하지 않습니다.** 원본 펌웨어에는 이 프로젝트의 LED·F키 연동 기능이 없습니다.
 
-공장 초기화, VIA 키맵 초기화, 앱 설정 기본값 복원은 **기존 펌웨어 프로그램을 원본으로 되돌리는 작업이 아닙니다.** 원본 플래시 복원과 이후 키맵·매크로 확인은 별도입니다. 원본 펌웨어로 돌아갈 때는 원래 키 코드 체계를 유지하고 커스텀 펌웨어용 변환을 다시 적용하지 않습니다.
+공장 초기화, VIA 키맵 초기화, 앱 설정 기본값 복원은 **기존 펌웨어 프로그램을 원본으로 되돌리는 작업이 아닙니다.** 원본 플래시 복원과 이후 키맵·매크로 확인은 별도입니다.
 
 업데이트 후 일반 키보드로 부팅되지 않아도 물리 Reset으로 DFU가 인식된다면, 해당 기기의 검증된 원본과 복구 절차로 복원을 검토할 수 있습니다. 먼저 전원·데이터 케이블·포트·DFU 인식을 확인하세요. DFU 자체가 인식되지 않거나 검증한 원본이 없다면 성공을 보장할 수 없습니다. 강제 지우기나 검증 우회 대신 중단하고 Keychron 지원 또는 하드웨어 점검을 이용합니다.
 

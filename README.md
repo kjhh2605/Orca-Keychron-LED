@@ -100,12 +100,13 @@ git clone <this-repo> && cd orca-keychron-led
 
 **앱만으로는 설치할 수 없는 유일한 단계입니다.** 저장소를 내려받아 진행하며, 펌웨어 빌드에는 libusb 개발 파일과 pkg-config가 필요합니다. **반드시 [설치 문서](docs/public/INSTALL.md)를 먼저 끝까지 읽어 주세요.** 순서는 다음과 같습니다.
 
-1. **Cable 모드**에서 키맵·매크로와 원본 펌웨어를 백업합니다.
-2. 물리 Reset으로 **DFU** 모드에 들어갑니다.
-3. 펌웨어를 쓰고 다시 읽어 비교합니다.
-4. 일반 USB 장치로 돌아온 것을 확인합니다.
+1. [Keychron Launcher](https://launcher.keychron.com)에서 키보드의 **공식 펌웨어를 최신 버전으로 업데이트**합니다. 백업·설치 도구는 VIA 12만 지원하며, 오래된 공식 펌웨어(VIA 10)에서는 백업이 멈춥니다.
+2. **Cable 모드**에서 키맵·매크로를 백업합니다.
+3. 물리 Reset으로 **DFU** 모드에 들어가 원본 플래시를 두 번 읽어 보관합니다.
+4. 펌웨어를 쓰고 다시 읽어 비교합니다.
+5. 일반 USB 장치로 돌아온 것을 확인하고 USB 테마 지원을 확인합니다.
 
-쓰기를 시작한 뒤에는 확인이 끝날 때까지 케이블을 빼지 마세요.
+쓰기를 시작한 뒤에는 확인이 끝날 때까지 케이블을 빼지 마세요. 설치하면 VIA 키맵과 조명이 기본값으로 초기화되니, 필요한 키는 VIA에서 공식 정의 파일로 다시 지정합니다.
 
 ![커스텀 펌웨어 설치에서 USB 검증을 거쳐 Bluetooth 연동으로 전환하는 순서](docs/public/firmware-flow.svg)
 
@@ -147,7 +148,8 @@ git clone <this-repo> && cd orca-keychron-led
 | Codex 상태가 누락되거나 다른 칸에 표시됨 | 새 Orca 터미널에서 `codex --no-daemon`으로 시작 → [자세히](docs/public/USAGE.md#codex-응답이-끝났는데-핑크색이거나-다른-칸이-바뀌어요) |
 | 설정을 저장했는데 조명이 그대로임 | BT 연결, 연동 실행 여부, USB 테마 지원 확인 여부 점검 후 같은 설정을 다시 저장 |
 | 키보드 전원을 껐다 켬 | BT 재연결 후 재전송을 기다리고, 원래 색이면 연동 중지 → 시작 |
-| Command·Option 등 일반 키가 이상함 | 먼저 **연동 중지**. 다른 펌웨어의 키맵을 그대로 덮어쓰지 않기 → [설치 문서](docs/public/INSTALL.md) |
+| Command·Option 등 일반 키가 이상함 | 먼저 **연동 중지**. VIA에서 공식 정의 파일로 키 확인 → [설치 문서](docs/public/INSTALL.md#mac-키-코드-호환성) |
+| 백업이 `Unreviewed VIA protocol 10`으로 멈춤 | Keychron Launcher에서 공식 펌웨어 최신화 후 다시 백업 → [자세히](docs/public/USAGE.md#백업이-unreviewed-via-protocol-10으로-멈춰요) |
 
 더 많은 경우는 [사용법·문제 해결](docs/public/USAGE.md)에 있습니다.
 
