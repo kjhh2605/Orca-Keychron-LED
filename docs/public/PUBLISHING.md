@@ -11,7 +11,7 @@ python3 scripts/export-public.py --output ../orca-keychron-led-github
 ## 포함하는 파일
 
 - 공개 README, 라이선스와 출처, `docs/public/`, 프로토콜 문서
-- 설정 앱 자체에서 생성한 예시 화면 PNG 한 장(텍스트·EXIF 메타데이터 제외)
+- 설정 앱 자체에서 생성한 예시 화면 PNG 한 장과 실제 사용 사진 PNG 한 장(텍스트·EXIF 메타데이터 제외)
 - 연결 모드와 펌웨어 작업 순서를 설명하는 SVG 그림 두 장(외부 참조·스크립트 없음)
 - Python·Swift·C 소스, 앱 정보, 빌드·백업·복원 스크립트
 - 고정된 펌웨어 소스·도구 목록과 패치

@@ -22,8 +22,9 @@ SCHEMA = "orca-led-public-source-v1"
 MANIFEST = "PUBLIC_EXPORT.json"
 PREVIEW_IMAGE = "docs/public/settings-preview.png"
 APP_ICON = "native/AppIcon.png"
-# Generated images with no capture metadata; the only permitted binary assets.
-REVIEWED_PNGS = frozenset({PREVIEW_IMAGE, APP_ICON})
+KEYBOARD_PHOTO = "docs/public/keyboard-photo.png"
+# Reviewed images with no capture metadata; the only permitted binary assets.
+REVIEWED_PNGS = frozenset({PREVIEW_IMAGE, APP_ICON, KEYBOARD_PHOTO})
 GUIDE_IMAGES = frozenset({"docs/public/connection-modes.svg", "docs/public/firmware-flow.svg"})
 EXACT_FILES = frozenset({
     "README.md", "README.en.md", "LICENSE", "THIRD_PARTY_NOTICES.md", ".gitignore",
@@ -38,7 +39,7 @@ EXACT_FILES = frozenset({
     "scripts/build-release.sh", "scripts/build-icon.sh",
     "scripts/start-orca-debug.command", "scripts/backup-via.py", "scripts/restore-via.py",
     "scripts/export-public.py",
-    PREVIEW_IMAGE, APP_ICON,
+    PREVIEW_IMAGE, APP_ICON, KEYBOARD_PHOTO,
     *GUIDE_IMAGES,
 })
 SOURCE_TREES = {
