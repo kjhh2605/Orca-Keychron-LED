@@ -300,6 +300,97 @@ class AgentStatesTest(unittest.TestCase):
         self.assertEqual(aggregate_states([]), IDLE)
 
 
+def omp(state, observed=NOW * 1000 - 1000, **extra):
+    """Shape of Orca 1.4.241's omp tab projection: hook provenance, no mainAgent."""
+    return {"state": state, "agentType": "omp", "stateStartedAt": observed,
+            "stateObservedAt": observed, "evidenceObservedAt": observed, "updatedAt": observed,
+            "observation": {"origin": "hook", "authorityId": "main-agent-hooks:one",
+                            "incarnation": 0, "revision": 45, "observedAt": observed,
+                            "kind": "transition"}, **extra}
+
+
+class OmpHookStatesTest(unittest.TestCase):
+    def state(self, value):
+        return state_from_agent_status(value, now_ms=NOW * 1000)
+
+    def test_omp_hook_states_map_to_lights(self):
+        for value, expected in [
+            (omp("working"), RUNNING), (omp("waiting"), WAITING), (omp("blocked"), WAITING),
+            (omp("done"), COMPLETE), (omp("done", interrupted=True), IDLE),
+            (omp("done", sessionBoundary=True), IDLE),
+        ]:
+            with self.subTest(value=value):
+                self.assertEqual(self.state(value), expected)
+
+    def test_omp_without_hook_provenance_is_unknown(self):
+        # Title-only rows as published next to omp hooks: no agentType or observation.
+        title_only = {"state": "done", "stateStartedAt": NOW * 1000, "updatedAt": NOW * 1000,
+                      "paneKey": "p:l", "tabId": "p", "terminalTitle": "OMP"}
+        self.assertEqual(self.state(title_only), UNKNOWN)
+        self.assertEqual(self.state({**title_only, "state": "working"}), UNKNOWN)
+        replacements = [None, "hook", {}, []]
+        updates = [{"origin": "osc"}, {"origin": None},
+                   {"authorityId": "renderer:one"}, {"authorityId": None},
+                   {"incarnation": -1}, {"incarnation": True}, {"incarnation": 1.0},
+                   {"revision": -1}, {"revision": "45"}, {"kind": "title"},
+                   {"observedAt": None}, {"observedAt": float("nan")}, {"observedAt": 0},
+                   {"observedAt": NOW * 1000 + 1}]
+        for state in ["working", "blocked", "done"]:
+            for change in replacements + updates:
+                with self.subTest(state=state, change=change):
+                    value = omp(state)
+                    if change in updates:
+                        value["observation"].update(change)
+                        # Keep Orca's evidence clock consistent so only provenance is tested.
+                        if "observedAt" in change:
+                            value["evidenceObservedAt"] = change["observedAt"]
+                    else:
+                        value["observation"] = change
+                    self.assertEqual(self.state(value), UNKNOWN)
+            for key in ["origin", "authorityId", "incarnation", "revision", "observedAt"]:
+                value = omp(state)
+                value["observation"].pop(key)
+                self.assertEqual(self.state(value), UNKNOWN, key)
+            for extra in [{"evidenceObservedAt": NOW * 1000 - 5}, {"evidenceObservedAt": None},
+                          {"restoredUnconfirmed": True}, {"providerSessionOnly": True},
+                          {"providerSessionOnly": 1}]:
+                with self.subTest(state=state, extra=extra):
+                    self.assertEqual(self.state(omp(state, **extra)), UNKNOWN)
+        for state in ["idle", None, "Working"]:
+            self.assertEqual(self.state(omp(state)), UNKNOWN)
+
+    def test_long_omp_turn_stays_running_while_hook_evidence_is_fresh(self):
+        # stateObservedAt stays at turn start; each tool/message hook advances evidence.
+        turn_start = (NOW - 7200) * 1000
+        for state, expected in [("working", RUNNING), ("blocked", WAITING), ("waiting", WAITING)]:
+            with self.subTest(state=state):
+                fresh = omp(state, stateObservedAt=turn_start, stateStartedAt=turn_start)
+                self.assertEqual(self.state(fresh), expected)
+                edge = omp(state, observed=(NOW - 1800) * 1000, stateObservedAt=turn_start)
+                self.assertEqual(self.state(edge), expected)
+                stale = omp(state, observed=(NOW - 1801) * 1000, stateObservedAt=turn_start)
+                self.assertEqual(self.state(stale), UNKNOWN)
+
+    def test_finished_omp_turn_does_not_expire_but_needs_turn_time(self):
+        self.assertEqual(self.state(omp("done", observed=(NOW - 7200) * 1000)), COMPLETE)
+        value = omp("done")
+        value.pop("stateStartedAt")
+        self.assertEqual(self.state(value), UNKNOWN)
+
+    def test_hook_only_acceptance_does_not_widen_to_other_agents(self):
+        # pi and prime-agent share omp's normalizer but synthesize done on session_start.
+        for provider in ["pi", "prime-agent", "codex", "claude", None]:
+            for state in ["working", "done"]:
+                with self.subTest(provider=provider, state=state):
+                    self.assertEqual(self.state(omp(state, agentType=provider)), UNKNOWN)
+
+    def test_omp_rows_with_main_agent_follow_the_main_agent_rules(self):
+        value = omp("done", mainAgent={"state": "done", "stateStartedAt": NOW * 1000, "outcome": "failure"})
+        self.assertEqual(self.state(value), ERROR)
+        value["mainAgent"].pop("outcome")
+        self.assertEqual(self.state(value), UNKNOWN)  # Not an accepted Stop provider.
+
+
 class ClientTest(unittest.TestCase):
     def test_real_ui_order_wins_over_backend_order(self):
         result = OrcaClient(lambda: ui_snapshot(), FakeRPC(), clock=lambda: NOW).snapshot()
@@ -454,6 +545,50 @@ class ClientTest(unittest.TestCase):
         missing = client.snapshot()["slots"][0]
         self.assertEqual(missing["state"], UNKNOWN)
         self.assertIsNone(missing["completion_source"])
+
+    def test_omp_agent_end_completion_is_keyed_per_turn(self):
+        tab = {"type": "terminal", "id": "omp-tab", "agentStatus": omp("done")}
+        rpc = FakeRPC([{"worktree": "repo::/a", "tabs": [tab]}])
+        client = OrcaClient(lambda: ui_snapshot(), rpc, clock=lambda: NOW)
+        first = client.snapshot()["slots"][0]
+        self.assertEqual(first["state"], COMPLETE)
+        self.assertEqual(first["completion_source"], "omp_agent_end")
+        self.assertEqual(first["completion_key"], f"omp-tab@{NOW * 1000 - 1000}")
+        self.assertFalse(first["outcome_verified"])
+        fact = client.inventory()["workspaces"]["repo::/a"]["agents"][0]
+        self.assertTrue(fact["hook_observed"])
+        self.assertIsNone(fact["outcome"])
+        self.assertEqual(fact["status_source"], "tab_projection")
+        tab["agentStatus"] = omp("working", observed=NOW * 1000 - 500)
+        running = client.snapshot()["slots"][0]
+        self.assertEqual(running["state"], RUNNING)
+        self.assertIsNone(running["completion_source"])
+        self.assertIsNone(running["completion_key"])
+        tab["agentStatus"] = omp("done", observed=NOW * 1000 - 100)
+        second = client.snapshot()["slots"][0]
+        self.assertEqual(second["state"], COMPLETE)
+        self.assertNotEqual(second["completion_key"], first["completion_key"])
+        tab["agentStatus"] = omp("done", observed=NOW * 1000 - 100, turnCompletedAt=NOW * 1000 - 150)
+        self.assertEqual(client.snapshot()["slots"][0]["completion_key"], f"omp-tab@{NOW * 1000 - 150}")
+        tab["agentStatus"] = omp("done", sessionBoundary=True)
+        reset = client.snapshot()["slots"][0]
+        self.assertEqual(reset["state"], IDLE)
+        self.assertIsNone(reset["completion_source"])
+
+    def test_unproven_omp_row_keeps_workspace_unknown(self):
+        proven = {"type": "terminal", "id": "omp-1", "agentStatus": omp("done")}
+        other = {"type": "terminal", "id": "codex", "agentStatus": hook("done", agentType="codex")}
+        rpc = FakeRPC([{"worktree": "repo::/a", "tabs": [proven, other]}])
+        client = OrcaClient(lambda: ui_snapshot(), rpc, clock=lambda: NOW)
+        self.assertEqual(client.snapshot()["slots"][0]["completion_source"], "mixed")
+        unproven = omp("done")
+        unproven.pop("observation")
+        rpc.workspaces[0]["tabs"].append({"type": "terminal", "id": "omp-2", "agentStatus": unproven})
+        slot = client.snapshot()["slots"][0]
+        self.assertEqual(slot["state"], UNKNOWN)
+        self.assertIsNone(slot["completion_key"])
+        facts = client.inventory()["workspaces"]["repo::/a"]["agents"]
+        self.assertEqual([f["hook_observed"] for f in facts], [True, True, False])
 
     def test_codex_completion_does_not_hide_an_unobserved_terminal(self):
         rpc = FakeRPC([{"worktree": "repo::/a", "tabs": [

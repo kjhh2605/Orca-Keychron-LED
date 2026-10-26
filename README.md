@@ -150,6 +150,7 @@ git clone <this-repo> && cd orca-keychron-led
 | Orca를 아이콘으로 켰음 | `Orca LED.app`을 다시 열고 확인창에서 **다시 열기** |
 | 핑크·보라색이 깜빡임 | 연결 오류가 아니라 에이전트 상태 신호가 없다는 뜻일 수 있음 → [상태 기준](docs/public/STATUS.md) |
 | Codex 상태가 누락되거나 다른 칸에 표시됨 | 새 Orca 터미널에서 `codex --no-daemon`으로 시작 → [자세히](docs/public/USAGE.md#codex-응답이-끝났는데-핑크색이거나-다른-칸이-바뀌어요) |
+| omp 작업공간이 핑크·보라로 깜빡임 | Orca가 omp 훅을 관측했는지, 30분 넘게 새 훅이 없는 긴 도구 실행인지 확인 → [자세히](docs/public/USAGE.md#핑크보라색이-계속-깜빡여요) |
 | 설정을 저장했는데 조명이 그대로임 | BT 연결, 연동 실행 여부, USB 테마 지원 확인 여부 점검 후 같은 설정을 다시 저장 |
 | 키보드 전원을 껐다 켬 | BT 재연결 후 재전송을 기다리고, 원래 색이면 연동 중지 → 시작 |
 | Command·Option 등 일반 키가 이상함 | 먼저 **연동 중지**. VIA에서 공식 정의 파일로 키 확인 → [설치 문서](docs/public/INSTALL.md#mac-키-코드-호환성) |
