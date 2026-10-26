@@ -150,10 +150,65 @@ def _number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
+# Orca's pi-family hook normalizer publishes these without mainAgent. pi and
+# prime-agent share it but also synthesize "done" on session_start, which is
+# not a finished turn, so only omp's agent_end is accepted as completion.
+HOOK_ONLY_AGENTS = frozenset({"omp"})
+
+
+def _hook_only_observed_at(status: dict, now: float) -> float | None:
+    """Return the hook observation time only if the row proves it came from a hook.
+
+    Without mainAgent, the tab row's own observation is the sole difference
+    between a real hook transition and a title-derived synthetic row.
+    """
+    if status.get("agentType") not in HOOK_ONLY_AGENTS or status.get("mainAgent") is not None:
+        return None
+    if any(status.get(flag) not in (None, False) for flag in ("restoredUnconfirmed", "providerSessionOnly")):
+        return None
+    observation = status.get("observation")
+    if (not isinstance(observation, dict) or observation.get("origin") != "hook"
+            or observation.get("kind") not in ("transition", "snapshot")
+            or not isinstance(observation.get("authorityId"), str)
+            or not observation["authorityId"].startswith("main-agent-hooks:")
+            or any(type(observation.get(key)) is not int or observation[key] < 0
+                   for key in ("incarnation", "revision"))):
+        return None
+    observed = observation.get("observedAt")
+    # evidenceObservedAt is Orca's own freshness clock for this row; a
+    # mismatch means the observation does not describe the published state.
+    if (not _number(observed) or not _number(now) or not 0 < observed <= now
+            or status.get("evidenceObservedAt") != observed):
+        return None
+    return observed
+
+
+def _hook_only_state(status: dict, now: float) -> int:
+    observed = _hook_only_observed_at(status, now)
+    state = status.get("state")
+    if observed is None or state not in ("working", "waiting", "blocked", "done"):
+        return UNKNOWN
+    if state == "done":
+        # omp agent_end is an observed response end, not a success verdict.
+        # Without a turn timestamp a new finish could not be told apart.
+        if not _number(status.get("stateStartedAt")):
+            return UNKNOWN
+        if status.get("interrupted") is True or status.get("sessionBoundary") is True:
+            return IDLE
+        return COMPLETE  # Like Stop, a finished turn does not expire by age.
+    # stateObservedAt stays at the turn start while tool/message hooks keep
+    # advancing the evidence clock; Orca itself decays by evidence age.
+    if now - observed > HOOK_STALE_AFTER_MS:
+        return UNKNOWN
+    return RUNNING if state == "working" else WAITING
+
+
 def state_from_agent_status(status: Any, *, now_ms: float | None = None) -> int:
     """Use explicit hooks only; Orca also publishes title-derived synthetic rows."""
     if not isinstance(status, dict) or status.get("restoredUnconfirmed") is True:
         return UNKNOWN
+    if status.get("agentType") in HOOK_ONLY_AGENTS and status.get("mainAgent") is None:
+        return _hook_only_state(status, time.time() * 1000 if now_ms is None else now_ms)
     main = status.get("mainAgent")
     if not isinstance(main, dict) or main.get("state") not in ("working", "waiting", "blocked", "done"):
         return UNKNOWN
@@ -214,6 +269,8 @@ def _joined_hook_status(workspace: str, tab: dict, rows: list, now_ms: float) ->
     alone is insufficient: require the complete live route and contemporaneous
     projected state as well. Never use a title, tab position or workspace path
     to guess a match, and never let an old Stop hide newer activity.
+    Hook-only agents (omp) never have a mainAgent raw row to recover; their
+    tab projection already carries the hook observation, so they skip this.
     """
     projected = tab.get("agentStatus")
     if (tab.get("type") != "terminal" or tab.get("status") != "ready"
@@ -330,16 +387,23 @@ class OrcaClient:
                 joined = _joined_hook_status(item["worktree"], tab, hook_rows or [], self.clock() * 1000)
                 if joined is not None:
                     agent = joined
-                state = state_from_agent_status(agent, now_ms=self.clock() * 1000)
+                now_ms = self.clock() * 1000
+                state = state_from_agent_status(agent, now_ms=now_ms)
                 main = agent.get("mainAgent") if isinstance(agent, dict) else None
                 outcome = main.get("outcome") if isinstance(main, dict) else None
+                hook_only = isinstance(agent, dict) and _hook_only_observed_at(agent, now_ms) is not None
                 completion_source = completed_at = None
-                if state == COMPLETE:
+                if state == COMPLETE and isinstance(main, dict):
                     completion_source = "provider_success" if outcome == "success" else f"{agent['agentType']}_stop"
                     completed_at = main.get("stateStartedAt", agent.get("stateStartedAt"))
+                elif state == COMPLETE and hook_only:
+                    # Each agent_end enters done anew, so its start keys the turn.
+                    completion_source = f"{agent['agentType']}_agent_end"
+                    turn_end = agent.get("turnCompletedAt")
+                    completed_at = turn_end if _number(turn_end) and turn_end > 0 else agent["stateStartedAt"]
                 facts.append({"tab_id": tab.get("id"), "terminal": tab.get("terminal"),
                               "state": state, "state_name": STATE_NAMES[state],
-                              "hook_observed": isinstance(main, dict), "outcome": outcome,
+                              "hook_observed": isinstance(main, dict) or hook_only, "outcome": outcome,
                               "status_source": "raw_hook" if joined is not None else "tab_projection",
                               "completion_source": completion_source, "completed_at": completed_at,
                               "outcome_verified": isinstance(outcome, str) and outcome in {"success", "failure", "cancellation"}})
