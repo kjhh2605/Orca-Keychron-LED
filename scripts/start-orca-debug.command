@@ -5,6 +5,8 @@ set -eu
 
 orca_app='/Applications/Orca.app'
 orca_debug_port=19347
+# The bridge's single list of live-verified Orca versions.
+compat_file="${0:A:h:h}/orca_led/orca_compat.json"
 
 orca_process_check=0
 /usr/bin/pgrep -x Orca >/dev/null 2>&1 || orca_process_check=$?
@@ -39,9 +41,16 @@ if ! orca_version=$(/usr/bin/plutil -extract CFBundleShortVersionString raw -o -
   print -u2 'Orca 설치 버전을 읽을 수 없어 시작을 중단했습니다.'
   exit 1
 fi
-if [[ "$orca_version" != '1.4.223' ]]; then
-  print -u2 '이 연동은 Orca 1.4.223용입니다. 앱 버전이 달라 실행을 중단했습니다.'
+if [[ ! "$orca_version" =~ '^[0-9]+(\.[0-9]+){1,3}$' ]]; then
+  print -u2 "Orca 설치 버전을 확인할 수 없어 시작을 중단했습니다: $orca_version"
   exit 1
+fi
+# Unverified versions still open: the bridge shows read-only LED status if it
+# can map Orca's screen, and keeps F-key workspace switching off.
+verified_versions=$(/usr/bin/plutil -extract verified_versions json -o - "$compat_file" 2>/dev/null) || verified_versions=''
+if [[ "$verified_versions" != *"\"$orca_version\""* ]]; then
+  print -u2 "Orca $orca_version 은(는) 아직 검증되지 않은 버전입니다 (미검증)."
+  print -u2 'LED 상태 표시는 시도하지만 F키 작업공간 이동은 꺼집니다. 확인 방법: ./scripts/verify-orca-version.py'
 fi
 if /usr/sbin/lsof -nP -iTCP:"$orca_debug_port" -sTCP:LISTEN >/dev/null 2>&1; then
   print -u2 "로컬 연결 포트 $orca_debug_port 가 이미 사용 중입니다. 실행을 중단했습니다."

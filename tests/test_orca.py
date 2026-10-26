@@ -408,15 +408,32 @@ class ClientTest(unittest.TestCase):
         self.assertTrue(all(s["id"] is None for s in result["slots"]))
         self.assertIn("repo::/a", result["diagnostics"]["workspaces"])
 
-    def test_changed_runtime_stale_ui_and_unknown_version_fail_closed(self):
+    def test_changed_runtime_and_stale_ui_fail_closed(self):
         for changes, reason in [({"captured_at": NOW - 4}, "stale_ui_snapshot"),
                                 ({"runtime_id": "old-runtime"}, "runtime_changed"),
                                 ({"window_id": 3}, "window_mismatch")]:
             client = OrcaClient(lambda: ui_snapshot(**changes), FakeRPC(), clock=lambda: NOW)
             self.assertEqual(client.snapshot()["reason"], reason)
         rpc = FakeRPC()
-        rpc.version = "1.5.0"
-        self.assertEqual(OrcaClient(rpc=rpc).snapshot()["reason"], "unsupported_version")
+        rpc.version = None
+        self.assertEqual(OrcaClient(lambda: ui_snapshot(), rpc, clock=lambda: NOW).snapshot()["reason"],
+                         "unsupported_version")
+
+    def test_unverified_version_shows_status_but_refuses_navigation(self):
+        rpc = FakeRPC()
+        rpc.version = "9.9.9"
+        client = OrcaClient(lambda: ui_snapshot(), rpc, clock=lambda: NOW)
+        result = client.snapshot()
+        self.assertTrue(result["supported"])
+        self.assertEqual((result["app_version"], result["compatibility"]), ("9.9.9", "unverified"))
+        self.assertEqual(result["slots"][0]["state"], RUNNING)
+        with self.assertRaises(OrcaError) as caught:
+            client.select("repo::/a")
+        self.assertEqual(caught.exception.code, "unverified_orca_version")
+        self.assertFalse(any(name == "worktree.activate" for name, _ in rpc.calls))
+        rpc.version = "1.4.223"  # listed in orca_compat.json
+        self.assertEqual(client.snapshot()["compatibility"], "verified")
+        self.assertTrue(client.select("repo::/a")["accepted"])
 
     def test_view_and_modal_do_not_masquerade_as_current_workspace(self):
         for changes in [{"active_view": "settings"}, {"modal_open": True}]:

@@ -37,13 +37,14 @@ EXACT_FILES = frozenset({
     "firmware/recovery/official-manifest.json",
     "scripts/build-native.sh", "scripts/build-settings.sh", "scripts/build-firmware.sh",
     "scripts/build-release.sh", "scripts/build-icon.sh",
-    "scripts/start-orca-debug.command", "scripts/backup-via.py", "scripts/restore-via.py",
+    "scripts/start-orca-debug.command", "scripts/verify-orca-version.py",
+    "scripts/backup-via.py", "scripts/restore-via.py",
     "scripts/export-public.py",
     PREVIEW_IMAGE, APP_ICON, KEYBOARD_PHOTO,
     *GUIDE_IMAGES,
 })
 SOURCE_TREES = {
-    "orca_led": {".py", ".js"},
+    "orca_led": {".py", ".json"},
     "native": {".swift", ".plist"},
     "firmware/src": {".c", ".h"},
     "tests": {".py", ".c", ".h", ".sh", ".json"},

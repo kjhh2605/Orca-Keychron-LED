@@ -7,7 +7,6 @@ import Foundation
 final class StatusAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     static let orcaApp = URL(fileURLWithPath: "/Applications/Orca.app")
     static let orcaBundleID = "com.stablyai.orca"
-    static let orcaVersion = "1.4.223"
     static let cdpPort = 19347
 
     let helper: Helper
@@ -104,6 +103,21 @@ final class StatusAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return value
     }
 
+    // orca_led/orca_compat.json is the bridge's single list of live-verified
+    // Orca versions. Other versions may run read-only (no F-key switching).
+    func orcaVerified(_ version: String) -> Bool {
+        let url = project.appendingPathComponent("orca_led/orca_compat.json")
+        guard let data = try? Data(contentsOf: url),
+              let value = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              value["schema"] as? Int == 1,
+              let versions = value["verified_versions"] as? [String] else { return false }
+        return versions.contains(version)
+    }
+
+    static func installedOrcaVersion() -> String? {
+        Bundle(url: orcaApp)?.infoDictionary?["CFBundleShortVersionString"] as? String
+    }
+
     static func compact(_ text: String, length: Int = 64) -> String {
         let cleaned = text.replacingOccurrences(of: "\n", with: " ").replacingOccurrences(of: "\r", with: " ")
         return cleaned.count > length ? String(cleaned.prefix(length - 1)) + "…" : cleaned
@@ -127,7 +141,10 @@ final class StatusAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     static func reasonLabel(_ code: String) -> String {
         switch code {
-        case "unsupported_version": return "지원하지 않는 Orca 버전"
+        case "unsupported_version": return "Orca 버전을 확인할 수 없음"
+        case "orca_layout_changed": return "Orca 화면 구조가 바뀌어 읽을 수 없음 · 업데이트 확인 필요"
+        case "orca_bundle_unavailable": return "Orca 설치 파일을 읽을 수 없음"
+        case "orca_restart_required": return "Orca 업데이트 적용 대기 · Orca 재시작 필요"
         case "runtime_unavailable", "runtime_closed": return "Orca 런타임에 연결할 수 없음"
         case "runtime_timeout": return "Orca 런타임 응답 시간 초과"
         case "runtime_access_denied": return "Orca 런타임 접근 거부"
@@ -158,18 +175,18 @@ final class StatusAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         checks.append(missing.isEmpty ? Check(name: "macOS 권한", detail: "허용됨", level: .ok)
             : Check(name: "macOS 권한", detail: missing.joined(separator: "·") + " 필요", level: .error, action: #selector(requestPermissions)))
 
-        let installed = Bundle(url: Self.orcaApp)?.infoDictionary?["CFBundleShortVersionString"] as? String
+        let installed = Self.installedOrcaVersion()
         let orcaRunning = !Self.runningOrca().isEmpty
+        let unverified = installed.map { orcaVerified($0) ? "" : " · 미검증" } ?? ""
         if installed == nil {
             checks.append(Check(name: "Orca", detail: "설치되지 않음", level: .error))
-        } else if installed != Self.orcaVersion {
-            checks.append(Check(name: "Orca", detail: "버전 불일치 · 설치 \(installed!) / 지원 \(Self.orcaVersion)", level: .error))
         } else if !orcaRunning {
-            checks.append(Check(name: "Orca", detail: "실행 중 아님", level: .off))
+            checks.append(Check(name: "Orca", detail: "실행 중 아님" + unverified, level: .off))
         } else if cdpEnabled && !Self.tcpPortOpen(Self.cdpPort) {
             checks.append(Check(name: "Orca", detail: "일반 모드 · 연동 모드로 다시 열어야 함", level: .warn))
         } else {
-            checks.append(Check(name: "Orca", detail: "\(Self.orcaVersion) · \(cdpEnabled ? "연동 모드" : "실행 중")", level: .ok))
+            checks.append(Check(name: "Orca", detail: "\(installed!)\(unverified) · \(cdpEnabled ? "연동 모드" : "실행 중")",
+                                level: unverified.isEmpty ? .ok : .warn))
         }
 
         let running = bridgeProcess?.isRunning == true
@@ -193,7 +210,11 @@ final class StatusAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             checks.append(Check(name: "Orca 상태 읽기", detail: "응답 없음 · 마지막 갱신 \(Self.ago(now - updated))", level: .error))
         } else if snapshot?["supported"] as? Bool == true {
             let total = snapshot?["total_slots"] as? Int ?? 0
-            checks.append(Check(name: "Orca 상태 읽기", detail: "정상 · 작업공간 \(total)개", level: .ok))
+            if snapshot?["compatibility"] as? String == "verified" {
+                checks.append(Check(name: "Orca 상태 읽기", detail: "정상 · 작업공간 \(total)개", level: .ok))
+            } else {
+                checks.append(Check(name: "Orca 상태 읽기", detail: "작업공간 \(total)개 · 미검증 버전이라 F키 이동 꺼짐", level: .warn))
+            }
         } else {
             let reason = snapshot?["reason"] as? String ?? "unknown"
             checks.append(Check(name: "Orca 상태 읽기", detail: Self.reasonLabel(reason), level: .error))
@@ -415,13 +436,8 @@ final class StatusAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func prepareAndStart() {
         guard bridgeProcess?.isRunning != true, !starting, !stopping, !checkingFirmware, !preparingOrca, !quitting else { return }
         guard cdpEnabled else { startBridge(); return }
-        let installed = Bundle(url: Self.orcaApp)?.infoDictionary?["CFBundleShortVersionString"] as? String
-        guard let installed else {
+        guard Self.installedOrcaVersion() != nil else {
             alert("Orca를 찾지 못했습니다.", "지원하는 설치 경로: /Applications/Orca.app")
-            return
-        }
-        guard installed == Self.orcaVersion else {
-            alert("지원하지 않는 Orca 버전입니다.", "이 연동은 Orca \(Self.orcaVersion)용입니다. 설치된 버전: \(installed)")
             return
         }
         preparingOrca = true
@@ -453,7 +469,11 @@ final class StatusAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func confirmOrcaRestart() {
         let alert = NSAlert()
         alert.messageText = "Orca를 연동 모드로 다시 열까요?"
-        alert.informativeText = "Orca가 일반 모드로 실행 중이라 LED 연동을 연결할 수 없습니다.\n\nOrca를 종료(Cmd+Q와 같은 방식)한 뒤 연동 모드로 다시 엽니다. 저장하지 않은 작업이 있으면 먼저 정리해 주세요. Orca가 종료 확인을 물으면 직접 답해 주세요."
+        var detail = "Orca가 일반 모드로 실행 중이라 LED 연동을 연결할 수 없습니다.\n\nOrca를 종료(Cmd+Q와 같은 방식)한 뒤 연동 모드로 다시 엽니다. 저장하지 않은 작업이 있으면 먼저 정리해 주세요. Orca가 종료 확인을 물으면 직접 답해 주세요."
+        if let installed = Self.installedOrcaVersion(), !orcaVerified(installed) {
+            detail += "\n\nOrca \(installed)은(는) 아직 검증되지 않은 버전입니다. LED 상태 표시는 시도하지만 F키 작업공간 이동은 꺼집니다."
+        }
+        alert.informativeText = detail
         alert.addButton(withTitle: "다시 열기")
         alert.addButton(withTitle: "취소")
         NSApp.activate(ignoringOtherApps: true)
