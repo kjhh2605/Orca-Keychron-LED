@@ -271,8 +271,9 @@ def _joined_hook_status(workspace: str, tab: dict, rows: list, now_ms: float) ->
     alone is insufficient: require the complete live route and contemporaneous
     projected state as well. Never use a title, tab position or workspace path
     to guess a match, and never let an old Stop hide newer activity.
-    Hook-only agents (omp) never have a mainAgent raw row to recover; their
-    tab projection already carries the hook observation, so they skip this.
+    Hook-only agents (omp) have no mainAgent; their raw row qualifies by its
+    hook observation alone. Orca 1.4.241 drops that observation from the done
+    projection, so without this join every finished omp turn reads unknown.
     """
     projected = tab.get("agentStatus")
     if (tab.get("type") != "terminal" or tab.get("status") != "ready"
@@ -296,7 +297,8 @@ def _joined_hook_status(workspace: str, tab: dict, rows: list, now_ms: float) ->
     if raw.get("structuredHost") is not None:
         return None
     main, observation = raw.get("mainAgent"), raw.get("observation")
-    if (not isinstance(main, dict) or not isinstance(observation, dict)
+    hook_only = raw.get("agentType") in HOOK_ONLY_AGENTS and main is None
+    if (not (isinstance(main, dict) or hook_only) or not isinstance(observation, dict)
             or observation.get("origin") != "hook"
             or observation.get("kind") not in ("transition", "snapshot")
             or not isinstance(observation.get("authorityId"), str)

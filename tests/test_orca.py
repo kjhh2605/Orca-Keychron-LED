@@ -196,6 +196,46 @@ class RawHookJoinTest(unittest.TestCase):
         self.assertFalse(self.client.snapshot()["supported"])
 
 
+class OmpRawHookJoinTest(unittest.TestCase):
+    """Orca 1.4.241 omp done turn: the projection loses the hook observation."""
+    def setUp(self):
+        route = {"worktreeId": "repo::/a", "terminalHandle": "terminal1",
+                 "tabId": "parent", "paneKey": "parent:leaf"}
+        stamp = NOW * 1000 - 1
+        self.raw = {**route, "state": "done", "agentType": "omp", "stateStartedAt": stamp,
+                    "evidenceObservedAt": stamp, "receivedAt": stamp,
+                    "interrupted": None, "sessionBoundary": None,
+                    "observation": {"origin": "hook", "authorityId": "main-agent-hooks:one",
+                                    "incarnation": 0, "revision": 438, "observedAt": stamp,
+                                    "kind": "transition"}}
+        projected = {**route, "state": "done", "agentType": "omp", "updatedAt": NOW * 1000,
+                     "stateStartedAt": NOW * 1000, "terminalTitle": "OMP ready"}
+        self.tab = {"type": "terminal", "id": "parent::leaf", "parentTabId": "parent",
+                    "leafId": "leaf", "terminal": "terminal1", "ptyId": "pty-current",
+                    "status": "ready", "agentStatus": projected}
+        self.ui = ui_snapshot(hook_statuses=[self.raw])
+        self.client = OrcaClient(rpc=FakeRPC([{"worktree": "repo::/a", "tabs": [self.tab]}]),
+                                 ui_provider=lambda: self.ui, clock=lambda: NOW)
+
+    def test_finished_turn_is_complete_from_the_raw_hook_row(self):
+        self.assertEqual(self.client.inventory()["workspaces"]["repo::/a"]["state"], UNKNOWN)
+        result = self.client.snapshot()["slots"][0]
+        self.assertEqual(result["state"], COMPLETE)
+        self.assertEqual(result["completion_source"], "omp_agent_end")
+        self.assertEqual(result["completion_key"], f"parent::leaf@{NOW * 1000 - 1}")
+
+    def test_raw_row_without_hook_evidence_or_for_other_agents_stays_unknown(self):
+        # A row restored across an Orca restart keeps state but loses its observation.
+        for change in [{"observation": None}, {"evidenceObservedAt": None}, {"agentType": "pi"},
+                       {"mainAgent": {"state": "done"}}]:
+            with self.subTest(change=change):
+                self.ui["hook_statuses"] = [{**self.raw, **change}]
+                if "agentType" in change:
+                    self.tab["agentStatus"]["agentType"] = change["agentType"]
+                self.assertEqual(self.client.snapshot()["slots"][0]["state"], UNKNOWN)
+                self.tab["agentStatus"]["agentType"] = "omp"
+
+
 class AgentStatesTest(unittest.TestCase):
     def test_codex_stop_is_completed_without_claiming_a_success_verdict(self):
         value = hook("done", agentType="codex")
@@ -301,7 +341,7 @@ class AgentStatesTest(unittest.TestCase):
 
 
 def omp(state, observed=NOW * 1000 - 1000, **extra):
-    """Shape of Orca 1.4.241's omp tab projection: hook provenance, no mainAgent."""
+    """omp row with hook provenance (working projection or raw hook row): no mainAgent."""
     return {"state": state, "agentType": "omp", "stateStartedAt": observed,
             "stateObservedAt": observed, "evidenceObservedAt": observed, "updatedAt": observed,
             "observation": {"origin": "hook", "authorityId": "main-agent-hooks:one",
