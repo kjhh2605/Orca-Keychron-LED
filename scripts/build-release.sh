@@ -21,7 +21,7 @@ cp -R "$PROJECT_DIR/build/Orca LED.app" "$APP_PATH"
 RESOURCES="$APP_PATH/Contents/Resources"
 HELPERS="$APP_PATH/Contents/Helpers"
 mkdir -p "$RESOURCES/orca_led" "$HELPERS"
-cp "$PROJECT_DIR"/orca_led/*.py "$PROJECT_DIR"/orca_led/*.js "$RESOURCES/orca_led/"
+cp "$PROJECT_DIR"/orca_led/*.py "$PROJECT_DIR"/orca_led/orca_compat.json "$RESOURCES/orca_led/"
 cp "$PROJECT_DIR/LICENSE" "$PROJECT_DIR/THIRD_PARTY_NOTICES.md" "$RESOURCES/"
 cp -R "$PROJECT_DIR/build/Orca LED Settings.app" "$HELPERS/"
 
@@ -31,8 +31,9 @@ codesign --force --sign "$IDENTITY" "$HELPERS/Orca LED Settings.app"
 codesign --force --sign "$IDENTITY" "$APP_PATH"
 codesign --verify --deep --strict "$APP_PATH"
 
-# Smoke checks: the bundled package imports, and the helper passes its self-test.
-PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$RESOURCES" python3 -c "import orca_led.__main__, orca_led.cdp_ui"
+# Smoke checks: the bundled package imports, its Orca version policy loads,
+# and the helper passes its self-test.
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$RESOURCES" python3 -c "import orca_led.__main__, orca_led.cdp_ui; from orca_led.orca_compat import verified_versions; assert verified_versions()"
 "$APP_PATH/Contents/MacOS/OrcaLED" --self-test >/dev/null
 
 /usr/bin/ditto -c -k --keepParent "$APP_PATH" "$ZIP_PATH"

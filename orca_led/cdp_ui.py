@@ -2,7 +2,8 @@
 
 Requires Orca to have been explicitly started with a loopback debugging port.
 This module never launches/restarts the app or installs a renderer timer. The
-only evaluated program is the fixed, version-pinned workspace selector below.
+only evaluated program is the fixed workspace reader below, parameterised with
+the modules orca_compat discovered in the installed bundle.
 """
 from __future__ import annotations
 
@@ -16,7 +17,8 @@ import time
 from typing import Callable
 from urllib.parse import urlsplit
 
-from .orca import OrcaError, OrcaRPC, TESTED_ORCA_VERSION
+from .orca import OrcaError, OrcaRPC
+from .orca_compat import VERSION_RE, CompatError, discover_installed
 
 DEFAULT_CDP_PORT = 19347
 MAIN_RENDERER_URL = "file:///Applications/Orca.app/Contents/Resources/app.asar/out/renderer/index.html"
@@ -24,9 +26,12 @@ MAX_MESSAGE_BYTES = 1024 * 1024
 MAX_WIRE_BYTES = 8 * MAX_MESSAGE_BYTES
 
 
-def _expression(runtime_id: str, window_id: int) -> str:
+def _expression(runtime_id: str, window_id: int, layout: dict) -> str:
     expected = json.dumps({"url": MAIN_RENDERER_URL, "runtime": runtime_id,
-                           "window": window_id, "version": TESTED_ORCA_VERSION})
+                           "window": window_id, "version": layout["version"],
+                           "order": {"module": layout["order_module"], "export": layout["order_export"],
+                                     "source": layout["order_source"]},
+                           "store": {"module": layout["store_module"], "export": layout["store_export"]}})
     return "(async () => { const expected = " + expected + ";" + r"""
       if (location.href !== expected.url || document.baseURI !== expected.url ||
           globalThis !== top || typeof globalThis.api?.runtime?.getStatus !== 'function' ||
@@ -42,18 +47,25 @@ def _expression(runtime_id: str, window_id: int) -> str:
           status.graphStatus !== 'ready' || status.desktopWindowStatus !== 'available') {
         throw new Error('Orca runtime or authoritative window changed');
       }
-      const [activation, storeModule] = await Promise.all([
-        import(new URL('./assets/worktree-activation-D0sk4KxD.js', expected.url).href),
-        import(new URL('./assets/store-J2Yw4OnJ.js', expected.url).href)
+      // Both modules are in the entry script's static import graph, so these
+      // return the already evaluated instances. Only the function whose source
+      // matches what the Cmd+number handler calls is ever invoked.
+      const [orderModule, storeModule] = await Promise.all([
+        import(new URL('./' + expected.order.module, expected.url).href),
+        import(new URL('./' + expected.store.module, expected.url).href)
       ]);
-      if (typeof activation.s !== 'function' || typeof storeModule.t?.getState !== 'function') {
-        throw new Error('Orca renderer exports changed');
+      const order = orderModule[expected.order.export];
+      const store = storeModule[expected.store.export];
+      if (typeof order !== 'function' ||
+          Function.prototype.toString.call(order) !== expected.order.source ||
+          typeof store?.getState !== 'function') {
+        throw new Error('orca_layout_changed: Orca renderer exports changed');
       }
-      const rows = activation.s();
-      const state = storeModule.t.getState();
+      const rows = order();
+      const state = store.getState();
       if (!Array.isArray(rows) || rows.length > 10000 ||
-          typeof state.getKnownWorktreeById !== 'function') {
-        throw new Error('Orca numbered workspace order is unavailable');
+          typeof state?.getKnownWorktreeById !== 'function') {
+        throw new Error('orca_layout_changed: Orca numbered workspace order is unavailable');
       }
       const slots = rows.map(row => {
         if (typeof row?.id !== 'string' || !row.id) throw new Error('Invalid workspace ID');
@@ -311,12 +323,14 @@ def _evaluate(websocket_url: str, expression: str, timeout: float) -> dict:
 class CDPUIProvider:
     """Callable compatible with OrcaClient(ui_provider=...).
 
-    Target enumeration and evaluation callbacks are injectable for offline
-    tests. Production connections are always literal IPv4 loopback addresses.
+    Target enumeration, evaluation and bundle discovery callbacks are
+    injectable for offline tests. Production connections are always literal
+    IPv4 loopback addresses.
     """
     def __init__(self, port: int = DEFAULT_CDP_PORT, rpc: OrcaRPC | None = None,
                  timeout: float = 2.0, fetch_targets: Callable[[], list] | None = None,
-                 evaluate: Callable[[str, str, float], dict] | None = None):
+                 evaluate: Callable[[str, str, float], dict] | None = None,
+                 discover: Callable[[], dict] | None = None):
         if isinstance(port, bool) or not isinstance(port, int) or not 1024 <= port <= 65535:
             raise ValueError("CDP port must be an integer in [1024, 65535]")
         if not isinstance(timeout, (int, float)) or isinstance(timeout, bool) or not 0 < timeout <= 5:
@@ -325,11 +339,20 @@ class CDPUIProvider:
         self.rpc = rpc or OrcaRPC()
         self.fetch_targets = fetch_targets or (lambda: _fetch_targets(self.port, self.timeout))
         self.evaluate = evaluate or _evaluate
+        self.discover = discover or discover_installed
 
     def __call__(self) -> dict:
         status = self.rpc.call("status.get")
-        if status.get("appVersion") != TESTED_ORCA_VERSION:
-            raise OrcaError("unsupported_version", "The UI reader needs validation for this Orca version.")
+        version = status.get("appVersion")
+        if not isinstance(version, str) or not VERSION_RE.fullmatch(version):
+            raise OrcaError("unsupported_version", "Orca did not report a valid app version.")
+        try:
+            layout = self.discover()
+        except CompatError as error:
+            raise OrcaError(error.code, str(error)) from None
+        if layout.get("version") != version:
+            # The bundle on disk was updated but this Orca process predates it.
+            raise OrcaError("orca_restart_required", "The running Orca differs from the installed app; restart Orca.")
         if (status.get("graphStatus") != "ready" or status.get("desktopWindowStatus") != "available" or
                 not isinstance(status.get("runtimeId"), str) or not status["runtimeId"] or
                 type(status.get("authoritativeWindowId")) is not int or status["authoritativeWindowId"] <= 0):
@@ -359,19 +382,24 @@ class CDPUIProvider:
         if not valid:
             raise OrcaError("cdp_target_rejected", "The main renderer debugging target is not the expected loopback endpoint.")
         try:
-            result = self.evaluate(websocket_url, _expression(status["runtimeId"], status["authoritativeWindowId"]), self.timeout)
+            result = self.evaluate(websocket_url, _expression(status["runtimeId"], status["authoritativeWindowId"], layout), self.timeout)
         except (TimeoutError, socket.timeout):
             raise OrcaError("cdp_timeout", "Timed out reading Orca's main renderer.") from None
         except OSError:
             raise OrcaError("cdp_unavailable", "Could not read Orca's local debugging connection.") from None
         if not isinstance(result, dict) or result.get("exceptionDetails") is not None:
+            details = result.get("exceptionDetails") if isinstance(result, dict) else None
+            exception = details.get("exception") if isinstance(details, dict) else None
+            description = exception.get("description") if isinstance(exception, dict) else None
+            if isinstance(description, str) and "orca_layout_changed:" in description:
+                raise OrcaError("orca_layout_changed", "Orca's renderer no longer matches the discovered Cmd+number order.")
             raise OrcaError("cdp_evaluation_failed", "Orca's fixed UI snapshot reader failed its renderer checks.")
         remote = result.get("result")
         snapshot = remote.get("value") if isinstance(remote, dict) else None
         if not isinstance(snapshot, dict) or snapshot.get("source") != "orca-renderer" or not isinstance(snapshot.get("slots"), list):
             raise OrcaError("invalid_ui_snapshot", "Orca did not return a valid renderer UI snapshot.")
-        if snapshot.get("app_version") != TESTED_ORCA_VERSION:
-            raise OrcaError("unsupported_version", "The UI snapshot came from an unsupported app version.")
+        if snapshot.get("app_version") != version:
+            raise OrcaError("invalid_ui_snapshot", "The UI snapshot came from a different app version.")
         if snapshot.get("runtime_id") != status["runtimeId"]:
             raise OrcaError("runtime_changed", "Orca restarted while reading its UI snapshot.")
         if snapshot.get("window_id") != status["authoritativeWindowId"]:

@@ -5,6 +5,7 @@ from orca_led.controller import navigation_action, states_from_snapshot
 class NavigationTests(unittest.TestCase):
     def setUp(self):
         self.snapshot = {"supported":True,"app_running":True,"selected_id":"b","active_view":"workspace",
+                         "compatibility":"verified",
                          "slots":[{"index":1,"id":"a","state":2},{"index":2,"id":"b","state":3}]}
 
     def test_background_same_target_activates_not_minimizes(self):
@@ -25,6 +26,13 @@ class NavigationTests(unittest.TestCase):
         self.snapshot["supported"] = False
         self.assertEqual(navigation_action(self.snapshot,0,"com.stablyai.orca")["action"],"none")
 
+    def test_unverified_orca_version_never_switches_or_minimizes(self):
+        self.snapshot["compatibility"] = "unverified"
+        for slot, front in [(0, "com.apple.finder"), (1, "com.stablyai.orca")]:
+            self.assertEqual(navigation_action(self.snapshot,slot,front)["action"],"none")
+        # LED state stays available for the same snapshot.
+        self.assertEqual(states_from_snapshot(self.snapshot)[:2], (2, 3))
+
     def test_snapshot_duplicate_rejected(self):
         self.snapshot["slots"].append(self.snapshot["slots"][0])
         with self.assertRaises(ValueError): states_from_snapshot(self.snapshot)
@@ -44,7 +52,7 @@ class ControllerRegressionTests(unittest.TestCase):
         self.calls = []
         self.value = {"supported": True, "app_running": True, "selected_id": "b",
                       "active_view": "terminal", "captured_at": self.wall,
-                      "runtime_id": "r1", "window_id": 1,
+                      "runtime_id": "r1", "window_id": 1, "compatibility": "verified",
                       "slots": [{"index": 1, "id": "a", "state": 2},
                                 {"index": 2, "id": "b", "state": 3}]}
         owner = self
@@ -130,6 +138,14 @@ class ControllerRegressionTests(unittest.TestCase):
         self.assertLess(operations.index("activate"), operations.index("select"))
         self.assertEqual(operations.count("select"), 1)
         self.assertTrue(self.controller._last_navigation["verified"])
+
+    def test_unverified_orca_version_key_press_does_not_touch_windows_or_workspaces(self):
+        self.value["compatibility"] = "unverified"
+        for slot, front in [(0, "com.apple.finder"), (1, "com.stablyai.orca")]:
+            self.native.foreground = front
+            self.assertFalse(self.controller._navigate(slot, 100))
+        for operation in ("activate", "minimize", "select"):
+            self.assertNotIn(operation, self.operations())
 
     def test_activation_waits_for_delayed_frontmost_before_select(self):
         from unittest.mock import patch

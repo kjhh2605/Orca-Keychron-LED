@@ -34,6 +34,9 @@ def navigation_action(snapshot, slot, frontmost_bundle, bundle="com.stablyai.orc
     """Use actual UI selection, never the last key we happened to observe."""
     if not snapshot.get("supported") or not snapshot.get("app_running"):
         return {"action": "none", "reason": "Orca UI unavailable"}
+    # Unverified Orca versions are read-only: no window activation or switching.
+    if snapshot.get("compatibility") != "verified":
+        return {"action": "none", "reason": "Workspace navigation needs a verified Orca version"}
     item = next((s for s in snapshot.get("slots", []) if s["index"] == slot + 1), None)
     if not item or not item.get("id"):
         return {"action": "none", "reason": "Unassigned slot"}

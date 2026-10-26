@@ -1,8 +1,9 @@
 """Read-only Orca state adapter and explicitly targeted workspace navigation.
 
-Orca 1.4.223's runtime API is an internal, version-specific interface. Its
+Orca's runtime API is an internal, version-specific interface. Its
 terminal/worktree list order is NOT the Cmd+number order. A live UI provider
 must supply that order; without one the adapter returns supported=False.
+Workspace navigation is limited to versions listed in orca_compat.json.
 """
 from __future__ import annotations
 
@@ -15,10 +16,11 @@ import time
 import uuid
 from typing import Any, Callable
 
+from .orca_compat import is_verified
+
 EMPTY, IDLE, RUNNING, WAITING, COMPLETE, ERROR, UNKNOWN = range(7)
 STATE_NAMES = ("empty", "idle", "running", "waiting", "complete", "error", "unknown")
 STOP_HOOK_AGENTS = frozenset({"codex", "claude"})
-TESTED_ORCA_VERSION = "1.4.223"
 MAX_RESPONSE_BYTES = 8 * 1024 * 1024
 HOOK_STALE_AFTER_MS = 30 * 60 * 1000
 UI_MAX_AGE_SECONDS = 3.0
@@ -303,8 +305,8 @@ class OrcaClient:
 
     def _read_inventory(self) -> tuple[dict, list]:
         status = self.rpc.call("status.get")
-        if status.get("appVersion") != TESTED_ORCA_VERSION:
-            raise OrcaError("unsupported_version", "Orca's internal API needs validation for this app version.")
+        if not isinstance(status.get("appVersion"), str) or not status["appVersion"]:
+            raise OrcaError("unsupported_version", "Orca did not report its app version.")
         if status.get("graphStatus") != "ready" or status.get("desktopWindowStatus") != "available":
             raise OrcaError("renderer_unavailable", "Orca's desktop workspace graph is not ready.")
         data = self.rpc.call("session.tabs.listAll")
@@ -427,7 +429,10 @@ class OrcaClient:
                 "selected_id": ui.get("selected_id") if ui.get("active_view") == "terminal" and not ui.get("modal_open") and ui.get("selected_host_id", "local") in {None, "local"} else None,
                 "window_id": ui["window_id"], "runtime_id": inventory["runtime_id"],
                 "active_view": ui.get("active_view"), "captured_at": ui["captured_at"],
-                "source": ui["source"], "total_slots": len(ui["slots"])}
+                "source": ui["source"], "total_slots": len(ui["slots"]),
+                # Unverified versions still show status; navigation is refused.
+                "app_version": inventory["app_version"],
+                "compatibility": "verified" if is_verified(inventory["app_version"]) else "unverified"}
 
     def select(self, target_id: str,
                before_dispatch: Callable[[dict], None] | None = None) -> dict:
@@ -435,6 +440,8 @@ class OrcaClient:
         current = self.snapshot()
         if not current.get("supported"):
             raise OrcaError(current["reason"], current.get("message", "Orca UI is unavailable."))
+        if current.get("compatibility") != "verified":
+            raise OrcaError("unverified_orca_version", "Workspace navigation needs a verified Orca version.")
         target = next((row for row in current["slots"] if row["id"] == target_id), None)
         if target is None:
             raise OrcaError("target_unavailable", "The requested workspace is no longer in the assigned slots.")

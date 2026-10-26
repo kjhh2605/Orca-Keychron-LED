@@ -12,7 +12,7 @@ Orca에서 여러 AI 코딩 에이전트를 동시에 돌리다 보면 어느 �
 
 *설정 앱의 예시 미리보기입니다. 실제 작업 정보는 포함하지 않습니다.*
 
-> **실험 단계의 개인 프로젝트입니다.** 대상은 **Keychron K10 Pro ANSI RGB · macOS · Orca 1.4.223** 조합 하나입니다. 키보드에 커스텀 펌웨어를 설치해야 합니다. Orca 또는 Keychron의 공식 제품이나 공식 연동이 아닙니다.
+> **실험 단계의 개인 프로젝트입니다.** 대상은 **Keychron K10 Pro ANSI RGB · macOS · Orca** 조합 하나입니다(검증한 Orca 버전: 1.4.223). 키보드에 커스텀 펌웨어를 설치해야 합니다. Orca 또는 Keychron의 공식 제품이나 공식 연동이 아닙니다.
 
 [설치·펌웨어](docs/public/INSTALL.md) · [사용법·문제 해결](docs/public/USAGE.md) · [상태 판단 기준](docs/public/STATUS.md) · [통신 프로토콜](docs/protocol.md) · [공개본 만들기](docs/public/PUBLISHING.md)
 
@@ -61,7 +61,7 @@ Orca 작업공간 순서와 에이전트 상태
 |---|---|
 | 키보드 | Keychron K10 Pro **ANSI RGB** (USB `3434:02A0`) + 이 프로젝트의 펌웨어 |
 | Mac | Apple Silicon, macOS 14 Sonoma 이상 |
-| Orca | **1.4.223**, `/Applications/Orca.app`에 설치 |
+| Orca | `/Applications/Orca.app`에 설치. 검증 버전(`orca_led/orca_compat.json`, 현재 **1.4.223**)은 전체 기능, 그 밖의 버전은 구조 확인을 통과하면 LED 상태만 표시(**미검증**, F키 이동 꺼짐) |
 | Python | 3.9 이상. macOS 기본 Python(Xcode Command Line Tools)으로 충분합니다 |
 | 케이블 | 펌웨어 설치 때만 USB **데이터** 케이블 필요 |
 
@@ -154,6 +154,8 @@ git clone <this-repo> && cd orca-keychron-led
 | 키보드 전원을 껐다 켬 | BT 재연결 후 재전송을 기다리고, 원래 색이면 연동 중지 → 시작 |
 | Command·Option 등 일반 키가 이상함 | 먼저 **연동 중지**. VIA에서 공식 정의 파일로 키 확인 → [설치 문서](docs/public/INSTALL.md#mac-키-코드-호환성) |
 | 백업이 `Unreviewed VIA protocol 10`으로 멈춤 | Keychron Launcher에서 공식 펌웨어 최신화 후 다시 백업 → [자세히](docs/public/USAGE.md#백업이-unreviewed-via-protocol-10으로-멈춰요) |
+| 메뉴에 `Orca 1.4.x · 미검증` 표시, F키 이동이 안 됨 | Orca 업데이트 후 아직 검증하지 않은 버전. `./scripts/verify-orca-version.py`로 확인 → [자세히](docs/public/INSTALL.md#orca-업데이트-후-버전-검증) |
+| `Orca 화면 구조가 바뀌어 읽을 수 없음` | Orca 업데이트로 내부 구조가 달라짐. 연동 코드 업데이트가 필요 |
 
 더 많은 경우는 [사용법·문제 해결](docs/public/USAGE.md)에 있습니다.
 
@@ -175,11 +177,11 @@ python3 scripts/export-public.py --output ../orca-keychron-led-github
 
 | 경로 | 역할 |
 |---|---|
-| `orca_led/` | Orca 상태 읽기, 작업공간 이동, Bluetooth 전송, 테마 관리 (Python, 표준 라이브러리만 사용) |
+| `orca_led/` | Orca 상태 읽기, 작업공간 이동, Bluetooth 전송, 테마 관리 (Python, 표준 라이브러리만 사용). `orca_compat.json`은 검증한 Orca 버전 목록 |
 | `native/` | 메뉴 막대 앱과 HID·권한 처리(Swift), `native/settings/` 설정 앱(SwiftUI) |
 | `firmware/src/` | 키보드 쪽 패킷 해석, F키 입력, RGB 표시 (QMK 기반 C) |
 | `firmware/upstream.lock.json` | 펌웨어 소스·도구의 고정 버전과 체크섬 |
-| `scripts/` | 앱·배포 zip·펌웨어 빌드, Orca 연동 모드 실행, 키맵 백업·복원, 공개본 내보내기 |
+| `scripts/` | 앱·배포 zip·펌웨어 빌드, Orca 연동 모드 실행, Orca 버전 검증, 키맵 백업·복원, 공개본 내보내기 |
 | `tests/` | 호스트·펌웨어·복원 절차 자동 테스트 |
 
 ## 라이선스

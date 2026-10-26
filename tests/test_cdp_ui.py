@@ -11,12 +11,16 @@ from unittest.mock import Mock, patch
 
 from orca_led.cdp_ui import CDPUIProvider, MAX_MESSAGE_BYTES, _WebSocket, _evaluate, _fetch_targets, _expression
 from orca_led.orca import OrcaError
+from orca_led.orca_compat import CompatError, discover
+from renderer_fixtures import EXPECTED_241, LAYOUT_223, LAYOUT_241, reader
 
 
 PORT = 19347
 MAIN_URL = "file:///Applications/Orca.app/Contents/Resources/app.asar/out/renderer/index.html"
 MAIN_ID = "main-renderer-1"
 MAIN_WS = f"ws://127.0.0.1:{PORT}/devtools/page/{MAIN_ID}"
+VERSION = "1.4.241"
+LAYOUT = {"version": VERSION, **EXPECTED_241}
 
 
 def target(**changes):
@@ -25,7 +29,7 @@ def target(**changes):
 
 
 def snapshot(**changes):
-    return {"schema": 1, "source": "orca-renderer", "app_version": "1.4.223",
+    return {"schema": 1, "source": "orca-renderer", "app_version": VERSION,
             "runtime_id": "runtime1", "window_id": 1, "producer_id": "producer1",
             "sequence": 17, "captured_at": 1800000000.0,
             "active_view": "terminal", "modal_open": False,
@@ -38,7 +42,7 @@ def snapshot(**changes):
 
 class FakeRPC:
     def __init__(self, **changes):
-        self.status = {"runtimeId": "runtime1", "appVersion": "1.4.223",
+        self.status = {"runtimeId": "runtime1", "appVersion": VERSION,
                        "authoritativeWindowId": 1, "graphStatus": "ready",
                        "desktopWindowStatus": "available", **changes}
         self.calls = []
@@ -50,21 +54,19 @@ class FakeRPC:
         return deepcopy(self.status)
 
 
-class RendererProgramTest(unittest.TestCase):
-    @unittest.skipUnless(shutil.which("node"), "Node is required to execute the renderer contract regression")
-    def test_preload_runtime_status_without_version_uses_separate_version_api(self):
-        # The installed preload's getStatus() omits appVersion, even though the
-        # Unix socket's status.get includes it. Execute the actual reader against
-        # that observed contract so a Python-only response mock cannot hide it.
-        harness = r"""
-const {createContext, Script, SyntheticModule} = require('node:vm');
+# Links the synthetic bundle as real ES modules, evaluates the entry's static
+# import graph once, then runs the generated reader. A dynamic import of any
+# module that was not already evaluated is refused, as is a second evaluation.
+HARNESS = r"""
+const {createContext, Script, SourceTextModule} = require('node:vm');
 const {readFileSync} = require('node:fs');
-const expression = JSON.parse(readFileSync(0, 'utf8'));
+const input = JSON.parse(readFileSync(0, 'utf8'));
 const url = 'file:///Applications/Orca.app/Contents/Resources/app.asar/out/renderer/index.html';
+const base = new URL('./', url).href;
 const context = createContext({URL, location:{href:url}, document:{baseURI:url}, api:{
   runtime:{getStatus:async()=>({runtimeId:'runtime1', authoritativeWindowId:1,
     graphStatus:'ready', desktopWindowStatus:'available'})},
-  updater:{getVersion:async()=>'1.4.223'},
+  updater:{getVersion:async()=>input.version},
   agentStatus:{getSnapshot:async()=>[{
     state:'done', agentType:'codex', paneKey:'parent:leaf', terminalHandle:'terminal1',
     tabId:'parent', worktreeId:'repo::/a', receivedAt:1799999999975,
@@ -76,37 +78,59 @@ const context = createContext({URL, location:{href:url}, document:{baseURI:url},
   }, {mainAgent:{state:'done',outcome:{invalid:'PRIVATE_INVALID'}}}]}
 }});
 new Script('globalThis.top=globalThis').runInContext(context);
-const ordered = [{id:'repo::/z'}, {id:'repo::/a'}];
-const modules = {
-  'worktree-activation-D0sk4KxD.js':new SyntheticModule(['s'], function(){
-    this.setExport('s', ()=>ordered);
-  }, {context}),
-  'store-J2Yw4OnJ.js':new SyntheticModule(['t'], function(){
-    this.setExport('t', {getState:()=>({activeWorktreeId:'repo::/a',
-      activeWorkspaceExecutionHostId:'local', activeView:'terminal', activeModal:'none',
-      getKnownWorktreeById:(id)=>({displayName:id.endsWith('/a')?'Agent A':'Agent Z'})})});
-  }, {context})
+context.__state = {rows:[{id:'repo::/z'}, {id:'repo::/old', isArchived:true}, {id:'repo::/a'}],
+  activeWorktreeId:'repo::/a', activeWorkspaceExecutionHostId:'local', activeView:'terminal',
+  activeModal:'none', getKnownWorktreeById:(id)=>({displayName:id.endsWith('/a')?'Agent A':'Agent Z'})};
+const modules = new Map();
+const load = (name) => {
+  if (!(name in input.modules)) throw new Error('Missing module ' + name);
+  if (!modules.has(name)) modules.set(name, new SourceTextModule(input.modules[name],
+    {context, identifier: base + name}));
+  return modules.get(name);
 };
 (async()=>{
-  for(const module of Object.values(modules)){await module.link(()=>{});await module.evaluate();}
-  const program = new Script(expression, {importModuleDynamically:async(specifier)=>{
-    const name=specifier.split('/').pop();
-    if(!modules[name])throw new Error('Unexpected module import');
-    return modules[name];
+  const entry = load(input.entry);
+  await entry.link((specifier, referrer) => load(new URL(specifier, referrer.identifier).href.slice(base.length)));
+  await entry.evaluate();
+  const program = new Script(input.expression, {importModuleDynamically:async(specifier)=>{
+    const module = modules.get(new URL(specifier).href.slice(base.length));
+    if (!module || module.status !== 'evaluated') throw new Error('Import of a module that was not already evaluated');
+    return module;
   }});
   const snapshot=await program.runInContext(context,{timeout:1000});
   process.stdout.write(JSON.stringify(snapshot));
-})().catch(error=>{process.stderr.write(error.stack);process.exitCode=1});
+})().catch(error=>{process.stderr.write(String(error && error.stack || error));process.exitCode=1});
 """
-        result = subprocess.run([shutil.which("node"), "--experimental-vm-modules", "-e", harness],
-                                input=json.dumps(_expression("runtime1", 1)), text=True,
-                                capture_output=True, timeout=5, check=True)
+
+
+@unittest.skipUnless(shutil.which("node"), "Node is required to execute the renderer contract regression")
+class RendererProgramTest(unittest.TestCase):
+    def run_reader(self, files, layout, version="1.4.223"):
+        program = {"version": version, "entry": layout["entry"], "modules": files,
+                   "expression": _expression("runtime1", 1, {"version": version, **layout})}
+        return subprocess.run([shutil.which("node"), "--experimental-vm-modules", "-e", HARNESS],
+                              input=json.dumps(program), text=True, capture_output=True, timeout=5)
+
+    def test_discovered_layouts_read_numbered_order_from_already_loaded_modules(self):
+        for files in [LAYOUT_223, LAYOUT_241]:
+            with self.subTest(entry=discover(reader(files))["entry"]):
+                result = self.run_reader(files, discover(reader(files)))
+                self.assertEqual(result.returncode, 0, result.stderr)
+                value = json.loads(result.stdout)
+                self.assertEqual([row["id"] for row in value["slots"]], ["repo::/z", "repo::/a"])
+                self.assertEqual([row["label"] for row in value["slots"]], ["Agent Z", "Agent A"])
+                self.assertEqual(value["selected_id"], "repo::/a")
+
+    def test_preload_runtime_status_without_version_uses_separate_version_api(self):
+        # The installed preload's getStatus() omits appVersion, even though the
+        # Unix socket's status.get includes it. Execute the actual reader against
+        # that observed contract so a Python-only response mock cannot hide it.
+        result = self.run_reader(LAYOUT_223, discover(reader(LAYOUT_223)))
+        self.assertEqual(result.returncode, 0, result.stderr)
         value = json.loads(result.stdout)
         self.assertEqual(value["app_version"], "1.4.223")
         self.assertEqual(value["runtime_id"], "runtime1")
         self.assertEqual(value["window_id"], 1)
-        self.assertEqual([row["id"] for row in value["slots"]], ["repo::/z", "repo::/a"])
-        self.assertEqual(value["selected_id"], "repo::/a")
         self.assertFalse(value["modal_open"])
         raw = value["hook_statuses"][0]
         self.assertEqual(raw["mainAgent"], {"state": "done", "stateStartedAt": 1799999999975})
@@ -118,16 +142,39 @@ const modules = {
         # silently become the missing-outcome form accepted for Codex Stop.
         self.assertIsNone(value["hook_statuses"][1]["mainAgent"]["outcome"])
 
+    def test_changed_function_or_version_is_never_called(self):
+        layout = discover(reader(LAYOUT_241))
+        # The renderer runs a build whose function differs from the bundle that
+        # was analysed: the reader must refuse before calling it.
+        changed = {**LAYOUT_241, "assets/App-Dm3rSCHd.js": LAYOUT_241["assets/App-Dm3rSCHd.js"].replace(
+            "function e$(){", "function e$(){globalThis.__called=1;")}
+        result = self.run_reader(changed, layout)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("orca_layout_changed", result.stderr)
+        program = {"version": "1.4.241", "entry": layout["entry"], "modules": LAYOUT_241,
+                   "expression": _expression("runtime1", 1, {"version": "1.4.240", **layout})}
+        result = subprocess.run([shutil.which("node"), "--experimental-vm-modules", "-e", HARNESS],
+                                input=json.dumps(program), text=True, capture_output=True, timeout=5)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("runtime or authoritative window changed", result.stderr)
+
+    def test_module_outside_the_startup_graph_is_not_imported(self):
+        layout = {**discover(reader(LAYOUT_241)), "store_module": "assets/web-CsCItEI0.js"}
+        result = self.run_reader(LAYOUT_241, layout, version="1.4.241")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("not already evaluated", result.stderr)
+
 
 class CDPUIProviderTest(unittest.TestCase):
-    def make_provider(self, targets=None, ui=None, rpc=None, response=None):
+    def make_provider(self, targets=None, ui=None, rpc=None, response=None, layout=None):
         fetch = Mock(return_value=[target()] if targets is None else targets)
         evaluator = Mock(return_value=(
             {"result": {"type": "object", "value": snapshot() if ui is None else ui}}
             if response is None else response))
         runtime = rpc if rpc is not None else FakeRPC()
         provider = CDPUIProvider(port=PORT, rpc=runtime, timeout=1.25,
-                                 fetch_targets=fetch, evaluate=evaluator)
+                                 fetch_targets=fetch, evaluate=evaluator,
+                                 discover=lambda: dict(LAYOUT if layout is None else layout))
         return provider, runtime, fetch, evaluator
 
     def test_exact_main_renderer_is_evaluated_and_snapshot_preserved(self):
@@ -139,8 +186,7 @@ class CDPUIProviderTest(unittest.TestCase):
         evaluate.assert_called_once()
         ws_url, expression, timeout = evaluate.call_args.args
         self.assertEqual(ws_url, MAIN_WS)
-        self.assertIsInstance(expression, str)
-        self.assertTrue(expression.strip())
+        self.assertEqual(expression, _expression("runtime1", 1, LAYOUT))
         self.assertEqual(timeout, 1.25)
         self.assertTrue(rpc.calls)
         self.assertTrue(all(method == "status.get" for method, _ in rpc.calls))
@@ -217,14 +263,43 @@ class CDPUIProviderTest(unittest.TestCase):
                 fetch.assert_not_called()
                 evaluate.assert_not_called()
 
-    def test_unsupported_or_not_ready_runtime_prevents_evaluation(self):
-        for changes in [{"appVersion": "1.4.217"}, {"graphStatus": "initializing"},
-                        {"desktopWindowStatus": "unavailable"}]:
+    def test_mismatched_or_not_ready_runtime_prevents_evaluation(self):
+        for changes, reason in [({"appVersion": "1.4.217"}, "orca_restart_required"),
+                                ({"appVersion": "1.4"}, "orca_restart_required"),
+                                ({"appVersion": None}, "unsupported_version"),
+                                ({"graphStatus": "initializing"}, "renderer_unavailable"),
+                                ({"desktopWindowStatus": "unavailable"}, "renderer_unavailable")]:
             with self.subTest(changes=changes):
                 provider, _, _, evaluate = self.make_provider(rpc=FakeRPC(**changes))
-                with self.assertRaises(OrcaError):
+                with self.assertRaises(OrcaError) as caught:
                     provider()
+                self.assertEqual(caught.exception.code, reason)
                 evaluate.assert_not_called()
+
+    def test_unverified_version_is_read_when_its_bundle_was_discovered(self):
+        # Verification gates navigation (OrcaClient), not the read-only reader.
+        ui = snapshot(app_version="9.9.9")
+        provider, _, _, evaluate = self.make_provider(rpc=FakeRPC(appVersion="9.9.9"), ui=ui,
+                                                      layout={**LAYOUT, "version": "9.9.9"})
+        self.assertEqual(provider(), ui)
+        self.assertIn('"version": "9.9.9"', evaluate.call_args.args[1])
+
+    def test_layout_change_is_reported_without_touching_the_renderer(self):
+        def fail():
+            raise CompatError("orca_layout_changed", "no handler")
+        fetch, evaluate = Mock(), Mock()
+        provider = CDPUIProvider(port=PORT, rpc=FakeRPC(), fetch_targets=fetch, evaluate=evaluate, discover=fail)
+        with self.assertRaises(OrcaError) as caught:
+            provider()
+        self.assertEqual(caught.exception.code, "orca_layout_changed")
+        fetch.assert_not_called()
+        evaluate.assert_not_called()
+        # The renderer's own source comparison failing is the same condition.
+        provider, _, _, _ = self.make_provider(response={"exceptionDetails": {"exception": {
+            "description": "Error: orca_layout_changed: Orca renderer exports changed\n    at <anonymous>"}}})
+        with self.assertRaises(OrcaError) as caught:
+            provider()
+        self.assertEqual(caught.exception.code, "orca_layout_changed")
 
     def test_renderer_identity_must_match_current_runtime_window_and_version(self):
         for changes in [{"runtime_id": "previous-runtime"}, {"window_id": 2},
