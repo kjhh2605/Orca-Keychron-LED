@@ -12,7 +12,7 @@ Orca에서 여러 AI 코딩 에이전트를 동시에 돌리다 보면 어느 �
 
 *설정 앱의 예시 미리보기입니다. 실제 작업 정보는 포함하지 않습니다.*
 
-> **실험 단계의 개인 프로젝트입니다.** 대상은 **Keychron K10 Pro ANSI RGB · macOS · Orca** 조합 하나입니다(검증한 Orca 버전: 1.4.223). 키보드에 커스텀 펌웨어를 설치해야 합니다. Orca 또는 Keychron의 공식 제품이나 공식 연동이 아닙니다.
+> **실험 단계의 개인 프로젝트입니다.** 대상은 **Keychron K10 Pro ANSI RGB · macOS · Orca** 조합 하나입니다(검증한 Orca 버전: 1.4.223, 1.4.241). 키보드에 커스텀 펌웨어를 설치해야 합니다. Orca 또는 Keychron의 공식 제품이나 공식 연동이 아닙니다.
 
 [설치·펌웨어](docs/public/INSTALL.md) · [사용법·문제 해결](docs/public/USAGE.md) · [상태 판단 기준](docs/public/STATUS.md) · [통신 프로토콜](docs/protocol.md) · [공개본 만들기](docs/public/PUBLISHING.md)
 
@@ -61,7 +61,7 @@ Orca 작업공간 순서와 에이전트 상태
 |---|---|
 | 키보드 | Keychron K10 Pro **ANSI RGB** (USB `3434:02A0`) + 이 프로젝트의 펌웨어 |
 | Mac | Apple Silicon, macOS 14 Sonoma 이상 |
-| Orca | `/Applications/Orca.app`에 설치. 검증 버전(`orca_led/orca_compat.json`, 현재 **1.4.223**)은 전체 기능, 그 밖의 버전은 구조 확인을 통과하면 LED 상태만 표시(**미검증**, F키 이동 꺼짐) |
+| Orca | `/Applications/Orca.app`에 설치. 검증 버전(`orca_led/orca_compat.json`, 현재 **1.4.223·1.4.241**)은 전체 기능, 그 밖의 버전은 구조 확인을 통과하면 LED 상태만 표시(**미검증**, F키 이동 꺼짐) |
 | Python | 3.9 이상. macOS 기본 Python(Xcode Command Line Tools)으로 충분합니다 |
 | 케이블 | 펌웨어 설치 때만 USB **데이터** 케이블 필요 |
 
@@ -130,7 +130,7 @@ git clone <this-repo> && cd orca-keychron-led
 2. **`Orca LED.app`을 엽니다.** 이것으로 끝입니다.
    - Orca가 꺼져 있으면 연동 모드로 열고, 준비되면 연동을 자동으로 시작합니다.
    - Orca가 평소 방식으로 켜져 있으면 **"Orca를 연동 모드로 다시 열까요?"** 확인창이 뜹니다. **다시 열기**를 누르면 Cmd+Q와 같은 방식으로 종료한 뒤 다시 엽니다. 강제 종료하지 않으니 저장하지 않은 작업은 먼저 정리하세요.
-3. 조명이 동기화되면 F키를 사용합니다. 전체 상태 동기화는 약 9초, 한 칸 변경은 약 4초 걸립니다.
+3. 조명이 동기화되면 F키를 사용합니다. 전체 상태 동기화는 약 7초, 한 칸 변경은 약 3초 걸립니다.
 
 메뉴 막대의 **⌨ LED** 메뉴에서 현재 F키별 상태 확인, 연동 중지, 밝기 조절, 연결·권한 진단을 할 수 있습니다.
 
@@ -150,9 +150,10 @@ git clone <this-repo> && cd orca-keychron-led
 | Orca를 아이콘으로 켰음 | `Orca LED.app`을 다시 열고 확인창에서 **다시 열기** |
 | 핑크·보라색이 깜빡임 | 연결 오류가 아니라 에이전트 상태 신호가 없다는 뜻일 수 있음 → [상태 기준](docs/public/STATUS.md) |
 | Codex 상태가 누락되거나 다른 칸에 표시됨 | 새 Orca 터미널에서 `codex --no-daemon`으로 시작 → [자세히](docs/public/USAGE.md#codex-응답이-끝났는데-핑크색이거나-다른-칸이-바뀌어요) |
-| omp 작업공간이 핑크·보라로 깜빡임 | Orca가 omp 훅을 관측했는지, 30분 넘게 새 훅이 없는 긴 도구 실행인지 확인 → [자세히](docs/public/USAGE.md#핑크보라색이-계속-깜빡여요) |
+| omp 작업공간이 핑크·보라로 깜빡임 | Orca가 omp 훅을 관측했는지, 30분 넘게 새 훅이 없는 긴 도구 실행인지, Orca 재시작 전에 끝난 턴인지, 같은 작업공간에 상태 없는 탭이 열려 있는지 확인 → [자세히](docs/public/USAGE.md#핑크보라색이-계속-깜빡여요) |
 | 설정을 저장했는데 조명이 그대로임 | BT 연결, 연동 실행 여부, USB 테마 지원 확인 여부 점검 후 같은 설정을 다시 저장 |
 | 키보드 전원을 껐다 켬 | BT 재연결 후 재전송을 기다리고, 원래 색이면 연동 중지 → 시작 |
+| 메뉴는 "Bluetooth 전송 중"인데 불이 꺼져 있고 F키가 원래 F1–F12로 동작 | 키보드가 신호를 받지 못한 상태. 연동 중지 → 시작, 그래도 안 되면 키보드 전원을 껐다 켜고 BT 재연결. 계속되면 Cable 모드에서 **USB 펌웨어 확인…** |
 | Command·Option 등 일반 키가 이상함 | 먼저 **연동 중지**. VIA에서 공식 정의 파일로 키 확인 → [설치 문서](docs/public/INSTALL.md#mac-키-코드-호환성) |
 | 백업이 `Unreviewed VIA protocol 10`으로 멈춤 | Keychron Launcher에서 공식 펌웨어 최신화 후 다시 백업 → [자세히](docs/public/USAGE.md#백업이-unreviewed-via-protocol-10으로-멈춰요) |
 | 메뉴에 `Orca 1.4.x · 미검증` 표시, F키 이동이 안 됨 | Orca 업데이트 후 아직 검증하지 않은 버전. `./scripts/verify-orca-version.py`로 확인 → [자세히](docs/public/INSTALL.md#orca-업데이트-후-버전-검증) |

@@ -41,7 +41,7 @@ A valid style atomically replaces only the selected state's RAM style and increm
 
 Until a state receives its first valid STYLE, its exact original palette and timing remain in use. Styles survive DISABLE, telemetry expiry and transport invalidation/reconnection within the same boot; power-on initialization clears them. The host should resend saved styles after a keyboard reboot. The unknown-state style also applies to previously assigned slots after the telemetry lease expires. The overlay still disappears after the normal30-second timeout.
 
-At the verified150ms-high/100ms-zero Bluetooth timing, one style frame takes approximately9seconds; six states take roughly54seconds plus interleaved heartbeat traffic. Configure before the initial snapshot, or send fresh telemetry/heartbeats between style frames while active. Style traffic alone intentionally cannot keep F-key navigation alive.
+One style frame is 34 symbols: about 8.6 s at 150/100 ms and about 6.9 s at the 120/80 ms bridge default. At 120/80 ms, seven states took about two minutes including interleaved heartbeats and refresh snapshots. Configure before the initial snapshot, or send fresh telemetry/heartbeats between style frames while active. Style traffic alone intentionally cannot keep F-key navigation alive.
 
 ## Acknowledged completion (theme capability 2)
 
